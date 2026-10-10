@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b1220">
+<title>คาบ 3: จัดเรียงเป็นแถวตรง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0b1220;--panel:#151f33;--panel2:#1b2740;--line:#2a3852;
+  --txt:#e8eefb;--mut:#93a4bf;--a1:#a78bfa;--a2:#fb923c;
+  --ok:#34d399;--bad:#f87171;--gold:#fbbf24;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--txt);
+  min-height:100vh;line-height:1.55;
+  background-image:
+    radial-gradient(900px 520px at 12% -8%, var(--a1), transparent 62%),
+    radial-gradient(760px 440px at 108% 2%, var(--a2), transparent 58%);
+  background-attachment:fixed;background-repeat:no-repeat;
+}
+body::before{content:'';position:fixed;inset:0;background:rgba(11,18,32,.80);z-index:-1}
+.app{max-width:780px;margin:0 auto;padding:14px 14px calc(150px + env(safe-area-inset-bottom))}
+
+/* ---------- hero ---------- */
+.hero{text-align:center;padding:14px 0 12px}
+.hero h1{font-family:'Space Grotesk','Sarabun',sans-serif;font-size:clamp(20px,5.2vw,27px);font-weight:700;
+  background:linear-gradient(120deg,var(--a1),var(--a2));-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;letter-spacing:.2px;margin-bottom:5px}
+.hero p{font-size:clamp(12px,3.3vw,14px);color:var(--mut)}
+.steps{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.chip{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:22px;
+  padding:5px 11px;font-size:11.5px;color:var(--mut);display:flex;align-items:center;gap:5px}
+.chip b{color:var(--a1);font-family:'Space Grotesk',sans-serif}
+
+/* ---------- sticky score ---------- */
+.hud{position:sticky;top:0;z-index:60;margin:4px -14px 0;padding:9px 14px 10px;
+  background:rgba(11,18,32,.90);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line)}
+.hud-row{display:flex;gap:8px;align-items:stretch}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:7px 6px;text-align:center;min-width:0}
+.stat .k{font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;color:#6b7c99;display:block}
+.stat .v{font-family:'Space Grotesk',sans-serif;font-size:clamp(18px,5vw,23px);font-weight:700;line-height:1.15;display:block;white-space:nowrap}
+.v.pts{color:var(--a1)}.v.st{color:var(--ok)}.v.dn{color:var(--txt)}
+.sum-btn{flex:0 0 auto;background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border:0;border-radius:13px;
+  padding:0 15px;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;cursor:pointer;min-height:48px}
+.sum-btn:active{transform:scale(.96)}
+.bar{position:relative;height:8px;background:rgba(255,255,255,.07);border-radius:8px;margin-top:9px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;border-radius:8px;background:linear-gradient(90deg,var(--a1),var(--a2));transition:width .55s cubic-bezier(.4,1.3,.5,1)}
+.bar-pct{position:absolute;right:8px;top:-19px;font-size:10.5px;color:var(--mut);font-family:'Space Grotesk',sans-serif}
+
+.sec{font-size:10.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:#6b7c99;margin:20px 0 9px}
+
+/* ---------- cards ---------- */
+.pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px}
+@media(max-width:360px){.pool{grid-template-columns:repeat(2,1fr);gap:7px}}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 10px;
+  min-height:104px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;
+  text-align:center;cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:transform .16s,border-color .16s,background .16s,box-shadow .16s;animation:pop .28s ease both}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+.card:active{transform:scale(.96)}
+.card.new{border-style:dashed}
+.card.new:hover{border-color:var(--a1);background:var(--panel2)}
+.card .c-no{position:absolute;top:6px;left:9px;font-size:9.5px;color:#55657f;font-family:'Space Grotesk',sans-serif}
+.card .c-q{font-size:26px;opacity:.3;line-height:1}
+.card.open,.card.ready,.card.done{align-items:flex-start;text-align:left;justify-content:flex-start}
+.card .c-txt{font-size:12.5px;color:#cfdaec;line-height:1.45}
+.card .c-hint{font-size:10.5px;font-weight:600;margin-top:auto;padding-top:5px}
+.card.open{border-color:var(--gold);background:linear-gradient(180deg,rgba(251,191,36,.07),transparent)}
+.card.open .c-hint{color:var(--gold)}
+.card.ready{border:2px solid var(--ok);background:linear-gradient(180deg,rgba(52,211,153,.10),transparent);
+  touch-action:none;animation:glow 1.5s ease-in-out infinite alternate}
+.card.ready .c-hint{color:var(--ok)}
+@keyframes glow{from{box-shadow:0 0 0 0 rgba(52,211,153,.18)}to{box-shadow:0 0 14px 2px rgba(52,211,153,.30)}}
+.card.sel{border-color:var(--a2);box-shadow:0 0 0 3px color-mix(in srgb,var(--a2) 35%,transparent),0 10px 24px rgba(0,0,0,.4);
+  transform:translateY(-3px) scale(1.02);animation:none}
+.card.done{opacity:.52;border-color:var(--line);background:rgba(255,255,255,.02);cursor:default}
+.drag-ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.92;width:150px;
+  box-shadow:0 18px 40px rgba(0,0,0,.55);animation:none!important}
+.tag{font-size:9.5px;font-weight:700;padding:2.5px 8px;border-radius:20px;display:inline-block;white-space:nowrap}
+.lv-easy{background:rgba(52,211,153,.16);color:#6ee7b7}
+.lv-mid{background:rgba(251,191,36,.16);color:#fcd34d}
+.lv-hard{background:rgba(248,113,113,.16);color:#fca5a5}
+.tag.go{background:rgba(52,211,153,.18);color:#6ee7b7}
+.tag.wait{background:rgba(251,191,36,.18);color:#fcd34d}
+.tag.ok{background:rgba(148,163,184,.16);color:#a8b6cc}
+
+/* ---------- reason panel ---------- */
+.panel{display:none;background:var(--panel);border:1px solid var(--a1);border-radius:17px;padding:15px;margin-top:14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.42)}
+.panel.on{display:block;animation:rise .3s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.p-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.p-eye{font-size:10px;letter-spacing:.9px;text-transform:uppercase;color:#6b7c99;font-weight:700}
+.skip{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--mut);border-radius:20px;
+  padding:7px 12px;font-family:'Sarabun',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.skip:active{transform:scale(.95)}
+.p-q{font-size:15px;font-weight:700;line-height:1.5;margin-bottom:4px}
+.p-ask{font-size:12px;color:var(--mut);margin-bottom:12px}
+.opt{display:flex;gap:10px;width:100%;text-align:left;background:#0f1828;border:1px solid var(--line);
+  border-radius:13px;padding:12px 13px;margin-bottom:9px;color:#cfdaec;font-family:'Sarabun',sans-serif;
+  font-size:12.5px;line-height:1.55;cursor:pointer;transition:background .15s,border-color .15s,transform .12s}
+.opt:last-child{margin-bottom:0}
+.opt:active:not(:disabled){transform:scale(.985)}
+.opt:disabled{opacity:.5;cursor:not-allowed}
+.opt .l{flex:0 0 26px;height:26px;border-radius:9px;background:rgba(255,255,255,.07);color:var(--a1);
+  display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px}
+.opt.good{background:rgba(52,211,153,.13);border-color:var(--ok);color:#a7f3d0}
+.opt.good .l{background:var(--ok);color:#06281c}
+.opt.bad{background:rgba(248,113,113,.13);border-color:var(--bad);color:#fecaca;animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+
+.callout{display:none;text-align:center;font-size:12.5px;font-weight:600;color:var(--ok);
+  background:rgba(52,211,153,.09);border:1px dashed var(--ok);border-radius:13px;padding:11px;margin-top:14px}
+.callout.on{display:block;animation:rise .3s ease both}
+
+/* ---------- zones ---------- */
+.zones{display:grid;gap:10px;margin-top:14px;grid-template-columns:repeat(3,1fr)}
+@media(max-width:620px){.zones{grid-template-columns:1fr}}
+.zone{background:rgba(15,24,40,.72);border:1.5px dashed var(--line);border-radius:17px;padding:12px;transition:.2s;min-height:96px}
+.zone.arm{border-color:var(--zc);background:color-mix(in srgb,var(--zc) 9%,rgba(15,24,40,.72))}
+.zone.hot{border-style:solid;border-color:var(--zc);background:color-mix(in srgb,var(--zc) 17%,rgba(15,24,40,.72));transform:scale(1.015)}
+.zone.nope{animation:shake .4s;border-color:var(--bad)!important}
+.z-head{text-align:center;padding-bottom:9px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:9px}
+.z-title{font-family:'Space Grotesk','Sarabun',sans-serif;font-size:13.5px;font-weight:700;color:var(--zc);line-height:1.35}
+.z-sub{font-size:10.5px;color:#6b7c99;margin-top:5px;line-height:1.45}
+.z-cnt{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;color:var(--zc);
+  background:color-mix(in srgb,var(--zc) 15%,transparent);border-radius:20px;padding:2px 9px}
+.drop{background:rgba(255,255,255,.04);border-left:3px solid var(--zc);border-radius:9px;padding:8px 10px;margin-bottom:7px;
+  font-size:11.5px;color:#a8b6cc;line-height:1.45;animation:pop .3s ease both}
+.d-m{margin-top:6px;background:#0d1524;border-radius:7px;padding:6px 8px;font-size:11px;display:flex;
+  flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.d-m .k{color:var(--gold);font-weight:700}
+.d-m .v{color:var(--ok);font-weight:700;font-family:'Space Grotesk',sans-serif}
+
+/* ---------- placer bar ---------- */
+.placer{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(11,18,32,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(0,0,0,.45)}
+.placer.on{display:block;animation:up .25s ease both}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+.pl-lab{font-size:11px;color:var(--mut);text-align:center;margin-bottom:8px}
+.pl-lab b{color:var(--txt)}
+.pl-row{display:flex;gap:8px;max-width:780px;margin:0 auto}
+.pl-btn{flex:1;min-height:52px;border:1.5px solid var(--zc);background:color-mix(in srgb,var(--zc) 14%,transparent);
+  color:var(--zc);border-radius:14px;font-family:'Sarabun',sans-serif;font-size:11.5px;font-weight:700;
+  cursor:pointer;padding:6px 6px;line-height:1.35}
+.pl-btn:active{transform:scale(.96)}
+.pl-x{flex:0 0 52px;min-height:52px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+  color:var(--mut);border-radius:14px;font-size:17px;cursor:pointer}
+
+/* ---------- modal ---------- */
+.mask{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:14px;
+  background:rgba(6,11,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.mask.on{display:flex;animation:fade .2s ease both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{width:100%;max-width:470px;max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch;
+  background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:19px;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);animation:rise .3s ease both}
+.sheet h3{font-size:15.5px;color:var(--a2);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.m-q{font-size:13.5px;background:#0f1828;border-left:3px solid var(--a1);border-radius:10px;padding:11px 12px;margin-bottom:11px;line-height:1.5}
+.m-zone{font-size:12.5px;color:var(--mut);margin-bottom:9px}
+.m-zone b{color:var(--a2)}
+.m-guide{font-size:13px;line-height:1.6;margin-bottom:12px}
+.m-guide b{color:var(--a2)}
+.m-extra{display:none;font-size:12.5px;line-height:1.55;color:#fcd9a4;background:rgba(251,191,36,.09);
+  border:1px dashed var(--gold);border-radius:11px;padding:11px;margin-bottom:12px}
+.m-extra.on{display:block;animation:rise .25s ease both}
+.field{background:#0f1828;border-radius:13px;padding:13px;margin-bottom:11px}
+.field label{display:block;font-size:12px;color:var(--mut);font-weight:600;margin-bottom:7px}
+.inp{width:100%;background:var(--panel2);border:2px solid #44546f;color:#fcd34d;border-radius:11px;
+  padding:11px 12px;font-family:'Space Grotesk',monospace;font-size:17px;font-weight:700;text-align:center;
+  outline:none;transition:border-color .2s;min-height:48px}
+.inp:focus{border-color:var(--a2)}
+.legend{font-size:10.5px;color:#6b7c99;margin-top:7px;line-height:1.55}
+.legend code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;color:#cfdaec;font-size:10.5px}
+.symbar{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 2px}
+.symbar button{flex:0 0 auto;min-width:46px;min-height:42px;padding:0 10px;border-radius:10px;
+  border:1px solid #44546f;background:var(--panel2);color:#fcd34d;font-size:17px;font-weight:800;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:inherit}
+.symbar button:active{background:#44546f;color:#fff}
+.symhelp-btn{display:inline-block;margin-top:6px;padding:5px 11px;border-radius:999px;
+  border:1px solid #44546f;background:transparent;color:#9fb3d1;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.symhelp-btn:active{background:#44546f;color:#fff}
+.symhelp{display:none;margin-top:8px;padding:11px 13px;border-radius:11px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  font-size:12px;line-height:2.1;color:#cfdaec}
+.symhelp.on{display:block}
+.symhelp code{background:rgba(255,255,255,.1);border-radius:5px;padding:2px 7px;color:#fcd34d;font-size:12px}
+.symhelp-note{margin-top:7px;font-size:10.5px;line-height:1.6;color:#6b7c99}
+.m-btns{display:flex;gap:9px;margin-top:4px}
+.btn{flex:1;min-height:50px;border:0;border-radius:13px;font-family:'Sarabun',sans-serif;font-size:14.5px;font-weight:700;cursor:pointer}
+.btn.go{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff}
+.btn.ghost{flex:0 0 42%;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--mut);font-size:13px}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ---------- summary ---------- */
+.ring-wrap{display:flex;align-items:center;gap:15px;margin-bottom:15px}
+.ring{width:96px;height:96px;flex:0 0 96px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:9;stroke-linecap:round}
+.ring .bgc{stroke:rgba(255,255,255,.07)}
+.ring .fgc{stroke:url(#grad);transition:stroke-dashoffset .8s cubic-bezier(.4,1.2,.5,1)}
+.ring-txt{flex:1;min-width:0}
+.ring-txt .big{font-family:'Space Grotesk',sans-serif;font-size:33px;font-weight:700;color:var(--a1);line-height:1.1}
+.ring-txt .small{font-size:12px;color:var(--mut)}
+.ring-txt .msg{font-size:12.5px;color:#cfdaec;margin-top:6px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.mini{background:#0f1828;border:1px solid var(--line);border-radius:12px;padding:9px 6px;text-align:center}
+.mini .n{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;display:block}
+.mini .t{font-size:10px;color:#6b7c99;display:block;margin-top:2px}
+.lines{border-top:1px solid var(--line);padding-top:11px;margin-bottom:13px}
+.lines .ln{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 0;color:var(--mut)}
+.lines .ln b{color:var(--txt);font-family:'Space Grotesk',sans-serif}
+.qlist{max-height:230px;overflow:auto;-webkit-overflow-scrolling:touch;border-top:1px solid var(--line);padding-top:10px;margin-bottom:14px}
+.qrow{display:flex;gap:9px;align-items:flex-start;font-size:11.5px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);color:#a8b6cc}
+.qrow .ic{flex:0 0 20px;text-align:center;font-size:13px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-top:5px}
+.qrow .tx{flex:1;line-height:1.45}
+.qrow .rt{flex:0 0 auto;font-size:10.5px;color:#6b7c99;white-space:nowrap}
+.note{font-size:11.5px;color:#6b7c99;background:rgba(255,255,255,.04);border-radius:11px;padding:10px;margin-bottom:13px;line-height:1.55}
+
+/* ---------- toast & fx ---------- */
+.toast{position:fixed;left:50%;top:12px;transform:translateX(-50%) translateY(-160%);z-index:300;
+  max-width:min(93vw,470px);background:#334155;color:#fff;font-size:12.5px;font-weight:600;line-height:1.5;
+  padding:11px 17px;border-radius:15px;text-align:center;box-shadow:0 12px 34px rgba(0,0,0,.5);
+  transition:transform .35s cubic-bezier(.34,1.5,.64,1)}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.toast.ok{background:linear-gradient(135deg,#059669,#10b981)}
+.toast.bad{background:linear-gradient(135deg,#dc2626,#ef4444)}
+.toast.gold{background:linear-gradient(135deg,#d97706,#f59e0b)}
+.fly{position:fixed;z-index:310;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:21px;
+  color:var(--ok);pointer-events:none;animation:fly 1s ease-out forwards;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+@keyframes fly{0%{opacity:0;transform:translateY(6px) scale(.85)}25%{opacity:1;transform:translateY(-6px) scale(1.1)}100%{opacity:0;transform:translateY(-46px) scale(1)}}
+.conf{position:fixed;top:-14px;width:9px;height:14px;z-index:305;pointer-events:none;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(680deg);opacity:.15}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <h1>🎲 จัดเรียงเป็นแถวตรง</h1>
+    <p>คาบ 3: ใครต้องอยู่ติดกัน ใครต้องแยกจากกัน หรือไม่มีเงื่อนไขเลย?</p>
+    <div class="steps"><div class="chip"><b>1</b>วิเคราะห์เงื่อนไขพื้นที่</div><div class="chip"><b>2</b>แยกลงกล่องกลยุทธ์</div><div class="chip"><b>3</b>ถอดรหัสสมการคำนวณ</div></div>
+  </header>
+
+  <div class="hud">
+    <div class="hud-row">
+      <div class="stat"><span class="k">คะแนน</span><span class="v pts" id="s-pts">0</span></div>
+      <div class="stat"><span class="k">ต่อเนื่อง</span><span class="v st" id="s-str">0</span></div>
+      <div class="stat"><span class="k">สำเร็จ</span><span class="v dn" id="s-dn">0/0</span></div>
+      <button class="sum-btn" id="b-sum">สรุป</button>
+    </div>
+    <div class="bar"><span class="bar-pct" id="s-pct">0%</span><i id="s-bar"></i></div>
+  </div>
+
+  <div class="sec">สถานการณ์ — แตะเพื่อวิเคราะห์</div>
+  <div class="pool" id="pool"></div>
+
+  <div class="panel" id="panel">
+    <div class="p-head">
+      <span class="p-eye">กำลังวิเคราะห์</span>
+      <button class="skip" id="b-pskip">⏭ ข้ามไว้ก่อน</button>
+    </div>
+    <div class="p-q" id="p-q"></div>
+    <div class="p-ask">เลือกเหตุผลที่อธิบายโครงสร้างของโจทย์ข้อนี้ได้ถูกต้องที่สุด</div>
+    <div id="p-opts"></div>
+  </div>
+
+  <div class="callout" id="callout">✓ วิเคราะห์ถูกต้อง! เลือกกล่องที่ตรงกับเหตุผลด้านล่าง (หรือลากการ์ดลงกล่อง)</div>
+
+  <div class="sec">ลักษณะของสถานการณ์ — แตะการ์ดที่พร้อมวาง แล้วเลือกช่อง</div>
+  <div class="zones" id="zones"></div>
+</div>
+
+<div class="placer" id="placer">
+  <div class="pl-lab">วางการ์ด <b id="pl-name">—</b> ลงกล่องไหน?</div>
+  <div class="pl-row" id="pl-row"></div>
+</div>
+
+<div class="mask" id="m-start">
+  <div class="sheet">
+    <h3>👋 ก่อนเริ่มเล่น</h3>
+    <div class="m-guide">ใส่ <b>เลขที่ของทั้งคู่</b> เพื่อให้ครูเห็นผลงานของกลุ่มบนจอหน้าห้อง<br>
+      <span style="font-size:12px;color:var(--mut)">ถ้ายังไม่พร้อม กด "ข้ามไปก่อน" แล้วมาใส่ทีหลังในหน้าสรุปได้</span></div>
+    <div class="field">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label>เลขที่คนที่ 1</label>
+          <input class="inp" id="st-1" type="text" inputmode="numeric" placeholder="เช่น 12"></div>
+        <div style="flex:1"><label>เลขที่คนที่ 2</label>
+          <input class="inp" id="st-2" type="text" inputmode="numeric" placeholder="เช่น 13"></div>
+      </div>
+    </div>
+    <div class="m-btns">
+      <button class="btn ghost" id="st-skip">ข้ามไปก่อน</button>
+      <button class="btn go" id="st-ok">เริ่มเล่น</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="m-calc">
+  <div class="sheet">
+    <h3>🧠 ถอดรหัสวิธีคิด</h3>
+    <div class="m-q" id="c-q"></div>
+    <div class="m-zone" id="c-zone"></div>
+    <div class="m-guide" id="c-guide"></div>
+    <div class="m-extra" id="c-extra"></div>
+    <div class="field" id="c-eqwrap">
+      <label>1. เขียนวิธีคิดของคุณ</label>
+      <input class="inp" id="c-eq" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์วิธีคิดที่นี่">
+      <div class="symbar" id="c-sym">
+        <button type="button" data-s="!">!</button>
+        <button type="button" data-s="(">(</button>
+        <button type="button" data-s=")">)</button>
+        <button type="button" data-s=",">,</button>
+        <button type="button" data-s="×">×</button>
+        <button type="button" data-s="/">/</button>
+        <button type="button" data-s="+">+</button>
+        <button type="button" data-s="-">−</button>
+        <button type="button" data-s="C(">C(</button>
+        <button type="button" data-s="P(">P(</button>
+      </div>
+      <div class="legend" id="c-shape"></div>
+      <div class="legend"><b>ไม่จำเป็นต้องใช้สัญลักษณ์พิเศษ</b> จะพิมพ์บวกลบคูณหารตรงๆ ก็ได้ เช่น <code>9×8×7</code> ระบบดูที่ค่าว่าถูกหรือไม่ เขียนแบบไหนก็ผ่านเหมือนกัน
+        <button type="button" class="symhelp-btn" id="c-symhelp">ปุ่มพวกนี้หมายถึงอะไร?</button></div>
+      <div class="symhelp" id="c-symhelp-box">
+        <div><code>7!</code> &nbsp;คือการคูณไล่ลงมาทีละหนึ่งจนถึง 1 &nbsp;→&nbsp; <code>7×6×5×4×3×2×1</code></div>
+        <div><code>P(9,2)</code> &nbsp;คือหยิบ 2 ชิ้นจาก 9 ชิ้น โดยถือว่าสลับที่กันแล้วเป็นคนละแบบ &nbsp;→&nbsp; <code>9×8</code></div>
+        <div><code>C(9,2)</code> &nbsp;คือหยิบ 2 ชิ้นจาก 9 ชิ้น โดยถือว่าสลับที่กันแล้วยังเป็นแบบเดิม &nbsp;→&nbsp; <code>(9×8)/(2×1)</code></div>
+        <div class="symhelp-note">ตัวเลขข้างบนเป็นแค่ตัวอย่างให้ดูว่าสัญลักษณ์ทำงานอย่างไร ไม่เกี่ยวกับโจทย์ข้อไหนในเกม</div>
+      </div>
+    </div>
+    <div class="field">
+      <label id="c-vlab">2. ผลลัพธ์สุทธิ (จำนวนวิธี)</label>
+      <input class="inp" id="c-val" type="text" inputmode="numeric" autocomplete="off" placeholder="?">
+    </div>
+    <div class="m-btns">
+      <button class="btn ghost" id="c-skip">⏭ ไว้ทำทีหลัง</button>
+      <button class="btn go" id="c-ok">ยืนยันคำตอบ</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="m-sum">
+  <div class="sheet" id="sum-body"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="fb-config.js"></script>
+<script>
+const CONFIG = {
+  id:'c3',
+  calcMode:'eq',
+  lockMs:2500,
+  reasonHint:'อ่านโจทย์ช้าๆ แล้วถามตัวเองว่า มีใครที่ต้องขยับไปไหนมาไหนด้วยกันเสมอ มีใครที่ห้ามเข้าใกล้กัน หรือทุกคนเลือกที่ยืนได้อย่างอิสระ',
+  zones:[
+    {k:'N',t:'จัดเรียงได้อิสระ ไม่มีเงื่อนไขเพิ่ม',short:'เรียงอิสระ ไม่มีเงื่อนไข',s:'ไม่มีคู่ไหนต้องอยู่ด้วยกัน<br>และไม่มีคู่ไหนต้องแยกกัน',c:'#818cf8',theory:'การจัดเรียงที่ไม่มีเงื่อนไขเพิ่มเติม',shape:'n!  หรือ  P(n,r)',nudge:'ลองนึกถึงช่องยืนทีละช่อง ช่องแรกมีกี่อย่างให้เลือก พอเลือกไปอย่างหนึ่งแล้ว ช่องที่สองเหลือให้เลือกกี่อย่าง ไล่แบบนี้ไปจนครบทุกช่อง'},
+    {k:'G',t:'บางสิ่งถูกบังคับให้อยู่ติดกัน',short:'ต้องอยู่ ติดกัน',s:'โจทย์ระบุว่ากลุ่มนี้<br>ต้องอยู่ชิดกันเสมอ',c:'#10b981',theory:'การจัดเรียงที่บางสิ่งต้องอยู่ติดกัน',shape:'n! × m!',nudge:'มัดของที่ต้องอยู่ด้วยกันให้เป็นก้อนเดียวก่อน แล้วนับว่าตอนนี้เหลือกี่ก้อนที่ต้องเรียง จากนั้นอย่าลืมว่าข้างในก้อนก็ยังสลับที่กันเองได้อีก'},
+    {k:'S',t:'บางสิ่งถูกห้ามไม่ให้อยู่ติดกัน',short:'ห้ามอยู่ ติดกัน',s:'โจทย์ระบุว่ากลุ่มนี้<br>ต้องแยกจากกัน',c:'#f43f5e',theory:'การจัดเรียงที่บางสิ่งห้ามอยู่ติดกัน',shape:'n! × P(n,r)',nudge:'จัดของที่ไม่มีเงื่อนไขให้เข้าที่ก่อนเพื่อเป็นตัวคั่น แล้วนับว่าเกิดช่องว่างให้แทรกกี่ช่อง (นับหัวแถวกับท้ายแถวด้วย) จากนั้นค่อยเลือกช่องให้ของที่เหลือลงไปอยู่'}
+  ],
+  decorate:function(q){ q.theory = (q.parts && typeof q.parts[0] === 'string') ? q.parts[0] : ''; }
+};
+
+/* ============================================================
+   ตั้งค่า Firebase — แก้ 3 บรรทัดนี้ให้ตรงกับโปรเจกต์ของครู
+   ถ้าเว้นว่างไว้ เกมจะทำงานปกติทุกอย่าง เพียงแต่ไม่ส่งผลขึ้นคลาวด์
+   ============================================================ */
+var FB = {
+  projectId: '',        /* ← Project ID จาก Firebase */
+  apiKey:    '',        /* ← Web API Key จาก Firebase */
+  room:      'room1'    /* ← รหัสห้อง ต้องตรงกับในจอครู */
+};
+
+/* ถ้ามีไฟล์ fb-config.js วางอยู่ข้างๆ จะใช้ค่าจากไฟล์นั้นแทน
+   (แก้ที่เดียว มีผลทุกคาบ — ไม่มีไฟล์นี้ก็ใช้ค่าด้านบนได้ตามปกติ) */
+if (window.FB_CONFIG) {
+  FB.projectId = FB_CONFIG.projectId || FB.projectId;
+  FB.apiKey    = FB_CONFIG.apiKey    || FB.apiKey;
+  FB.room      = FB_CONFIG.room      || FB.room;
+}
+
+function fbOn(){ return !!(FB.projectId && FB.apiKey); }
+function nowHM(){
+  var d = new Date();
+  return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+}
+function groupId(){
+  var a = (S && S.seat1) || '', b = (S && S.seat2) || '';
+  if(a && b) return a + '-' + b;
+  return a || b || '';
+}
+function fbVal(v){
+  if(typeof v === 'number') return (v % 1 === 0) ? { integerValue: String(v) } : { doubleValue: v };
+  if(typeof v === 'boolean') return { booleanValue: v };
+  if(Array.isArray(v)) return { arrayValue: { values: v.map(fbVal) } };
+  if(v && typeof v === 'object'){
+    var f = {}; for(var k in v) f[k] = fbVal(v[k]);
+    return { mapValue: { fields: f } };
+  }
+  return { stringValue: String(v == null ? '' : v) };
+}
+function fbPayload(){
+  var st = reportStats(), miss = {}, titles = {}, conf = [];
+  QUESTIONS.forEach(function(q){
+    var s = S.stats[q.id], tot = s.r + s.p + s.c;
+    if(tot > 0){ miss[String(q.id)] = tot; titles[String(q.id)] = q.icon + ' ' + q.text.slice(0, 70); }
+  });
+  confusionList().forEach(function(x){ conf.push(zName(x.from) + ' → ' + zName(x.to) + '|' + x.n); });
+  return {
+    room: FB.room, cls: CONFIG.id.replace('c',''), group: groupId(),
+    g1: (S.seat1 || ''), g2: (S.seat2 || ''),
+    pts: S.pts, max: MAX_PTS, pct: st.pct, level: levelOf(st.pct),
+    placed: S.placed.length, n: N,
+    rFirst: st.rFirst, pFirst: st.pFirst, cFirst: st.cFirst, calcDone: st.calcDone,
+    rW: st.rW, pW: st.pW, cW: st.cW, hints: st.hints, best: S.best,
+    miss: miss, titles: titles, conf: conf, ts: new Date().toISOString()
+  };
+}
+var fbLast = '';
+function fbStatus(msg){
+  fbLast = msg;
+  var el = document.getElementById('fb-stat');
+  if(el) el.textContent = msg;
+}
+function fbSend(manual){
+  if(!fbOn()){ if(manual) toast('ยังไม่ได้ตั้งค่า Firebase ในไฟล์นี้', 'bad'); return; }
+  if(!groupId()){ if(manual) toast('ใส่เลขที่ของทั้งคู่ก่อนส่งผลนะ', 'bad'); return; }
+  var docId = (FB.room + '_' + CONFIG.id + '_' + groupId()).replace(/[^A-Za-z0-9ก-๙_\-]/g, '-');
+  var url = 'https://firestore.googleapis.com/v1/projects/' + FB.projectId +
+            '/databases/(default)/documents/results/' + encodeURIComponent(docId) +
+            '?key=' + encodeURIComponent(FB.apiKey);
+  var pl = fbPayload(), body = { fields: {} };
+  for(var k in pl) body.fields[k] = fbVal(pl[k]);
+  fbStatus('กำลังส่ง…');
+  fetch(url, { method:'PATCH', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) })
+    .then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0, 120)); });
+      fbStatus('ส่งขึ้นจอครูแล้ว ' + nowHM());
+      if(manual) toast('ส่งผลขึ้นจอครูเรียบร้อย', 'ok');
+    })
+    .catch(function(e){
+      fbStatus('ส่งไม่สำเร็จ (' + String(e.message || e).slice(0, 50) + ')');
+      if(manual) toast('ส่งไม่สำเร็จ ตรวจอินเทอร์เน็ตหรือใช้ปุ่มคัดลอกผลแทน', 'bad');
+    });
+}
+var fbTimer = null;
+function queueSync(){
+  if(!fbOn() || !groupId()) return;
+  if(fbTimer) clearTimeout(fbTimer);
+  fbTimer = setTimeout(function(){ fbSend(false); }, 2000);
+}
+
+const QUESTIONS = [
+  {
+    id:1, level:'ง่าย', type:'N', icon:'🧍',
+    text:'จัดคน 5 คน ยืนเข้าแถวตรง',
+    ans: 120, parts: ['5!'],
+    eq: ['5!'],
+    hint: 'ไม่มีเงื่อนไขพิเศษ สามารถนำจำนวนคนทั้งหมดมาเรียงสับเปลี่ยนได้เลย',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> เช็กโจทย์อีกครั้งว่ามีใครต้องยืนติดกัน หรือใครต้องห้ามติดกันไหม ถ้าไม่มีเงื่อนไขพิเศษเลย ให้นับคนทั้งหมดตรงๆ',
+    reasons:[
+      'A: อ่านโจทย์จบแล้วไม่พบคู่ไหนที่ต้องยืนด้วยกัน และไม่มีคู่ไหนที่ต้องแยกจากกัน ทุกคนจึงเลือกที่ยืนได้ทุกช่อง',
+      'B: มีคนบางคู่ที่ต้องขยับไปไหนมาไหนด้วยกันเสมอ จึงต้องจับมัดคู่นั้นไว้ก่อนแล้วค่อยเรียงกับคนที่เหลือ',
+      'C: มีคนบางคู่ที่เข้าใกล้กันไม่ได้ จึงต้องให้คนอื่นยืนเข้าที่เป็นตัวคั่นไว้ก่อน'
+    ], correct:0
+  },
+  {
+    id:2, level:'ง่าย', type:'G', icon:'👫',
+    text:'จัดชาย 3 คน หญิง 2 คน เข้าแถว โดยผู้หญิงต้องยืนติดกัน',
+    ans: 48, parts: ['4! × 2!'],
+    eq: ['4!*2!', '4!x2!', '4!×2!', '2!*4!', '2!x4!', '2!×4!'],
+    hint: 'มัดผู้หญิง 2 คนเป็น 1 ก้อน นำไปเรียงกับผู้ชายที่เหลือ (รวมเป็นกี่ก้อน?) จากนั้นอย่าลืมคูณสลับที่ภายในก้อนผู้หญิงด้วย',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> รวมก้อนผู้หญิงเป็นสิ่งเดียว แล้วนับว่ามีกี่ก้อนทั้งหมดที่ต้องจัดแถว อย่าลืมว่าข้างในก้อนก็สลับกันได้ด้วย',
+    reasons:[
+      'A: ไม่มีใครถูกจำกัดว่าต้องยืนใกล้หรือไกลใคร ทุกคนจึงเลือกที่ยืนได้อิสระ',
+      'B: ถ้าผู้หญิงสองคนหลุดจากกันเมื่อไรก็ผิดเงื่อนไขทันที จึงต้องให้ทั้งคู่ขยับไปด้วยกันเสมือนเป็นคนเดียว แล้วค่อยนับการสลับที่ของสองคนนี้เพิ่มทีหลัง',
+      'C: ผู้หญิงสองคนเข้าใกล้กันไม่ได้ จึงต้องให้ผู้ชายยืนคั่นไว้ก่อนแล้วค่อยหาที่ว่างให้ผู้หญิงแทรก'
+    ], correct:1
+  },
+  {
+    id:3, level:'ปานกลาง', type:'S', icon:'🚶',
+    text:'จัดชาย 4 คน หญิง 2 คน เข้าแถว โดยผู้หญิงห้ามยืนติดกัน',
+    ans: 480, parts: ['4! × P(5,2)'],
+    eq: ['4!*p(5,2)', '4!xp(5,2)', '4!×p(5,2)', 'p(5,2)*4!', 'p(5,2)x4!', 'p(5,2)×4!'],
+    hint: 'เรียงผู้ชาย 4 คนเป็นกำแพงก่อน (สลับกันเองได้กี่วิธี?) จากนั้นนับช่องว่างที่เกิดขึ้น (รวมหัวท้าย) แล้วนำผู้หญิง 2 คนไปแทรกในช่องว่างเหล่านั้น',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> เรียงผู้ชายให้เสร็จก่อนเป็นแนวกั้น แล้วนับดูว่าระหว่างและปลายแถวเกิดช่องว่างขึ้นกี่ช่อง',
+    reasons:[
+      'A: โจทย์ไม่ได้ล็อกว่าใครต้องยืนข้างใคร คนทั้ง 6 จึงเลือกที่ยืนได้อิสระทุกคน',
+      'B: ผู้หญิงสองคนต้องขยับไปไหนมาไหนด้วยกันเสมอ จึงมัดรวมเป็นก้อนเดียวแล้วค่อยนับการสลับที่ภายใน',
+      'C: ถ้าผู้หญิงสองคนมาอยู่ชิดกันเมื่อไรก็ผิดเงื่อนไข จึงต้องให้ผู้ชายยืนเข้าที่ก่อนเป็นตัวคั่น แล้วค่อยเลือกช่องว่างระหว่างผู้ชายให้ผู้หญิงแทรกลงไป'
+    ], correct:2
+  },
+  {
+    id:4, level:'ง่าย', type:'N', icon:'💼',
+    text:'เลือกผู้สมัคร 6 คน มาเป็นประธาน รองประธาน และเลขาฯ',
+    ans: 120, parts: ['P(6,3)'],
+    eq: ['p(6,3)', '6!/3!'],
+    hint: 'มีตำแหน่งเฉพาะเจาะจง 3 ตำแหน่ง นำคน 6 คนมาจัดเรียงเข้าตำแหน่งได้เลย',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> ไม่มีใครถูกบังคับให้อยู่ติดหรือห่างจากใคร แค่ต้องจัดคนเข้าตำแหน่งที่ต่างกัน 3 ตำแหน่งเท่านั้น',
+    reasons:[
+      'A: โจทย์ไม่ได้บอกว่าใครต้องทำงานคู่กับใครหรือห้ามอยู่กับใคร มีแค่เก้าอี้ 3 ตัวที่ทำหน้าที่ต่างกัน ใครจะได้ตัวไหนก็ได้',
+      'B: โจทย์กำหนดให้ประธานกับรองประธานต้องทำงานคู่กันตลอด จึงต้องมัดสองคนนี้ไว้ด้วยกันก่อน',
+      'C: โจทย์ห้ามไม่ให้เลขาฯ ทำงานใกล้ประธาน จึงต้องจัดคนอื่นมาคั่นกลางไว้ก่อน'
+    ], correct:0
+  },
+  {
+    id:5, level:'ปานกลาง', type:'G', icon:'🔤',
+    text:'เรียงตัวอักษร S,M,I,L,E โดยสระ (I,E) ต้องอยู่ติดกัน',
+    ans: 48, parts: ['4! × 2!'],
+    eq: ['4!*2!', '4!x2!', '4!×2!', '2!*4!', '2!x4!', '2!×4!'],
+    hint: 'มัดสระ I,E เป็น 1 ก้อน นำไปเรียงกับพยัญชนะที่เหลือ แล้วอย่าลืมสลับที่ระหว่าง I กับ E ภายในก้อนด้วย',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> รวมสระทั้งสองตัวเป็นก้อนเดียวก่อน แล้วนับว่ามีกี่ก้อนทั้งหมดที่ต้องเรียง อย่าลืมสลับที่ในก้อนสระด้วย',
+    reasons:[
+      'A: ไม่มีตัวอักษรคู่ไหนที่ต้องอยู่ด้วยกัน และไม่มีคู่ไหนที่ห้ามอยู่ด้วยกัน จึงสลับที่ได้ทุกตัว',
+      'B: I กับ E ต้องเกาะกันไปตลอด จึงมองสองตัวนี้เป็นก้อนเดียวแล้วนำไปเรียงกับ S, M, L ก่อน จากนั้นค่อยนับว่าภายในก้อนสลับกันได้อีกกี่แบบ',
+      'C: ถ้า I กับ E มาอยู่ติดกันจะผิดเงื่อนไข จึงต้องเอา S, M, L เรียงคั่นไว้ก่อนแล้วค่อยแทรกสระ'
+    ], correct:1
+  },
+  {
+    id:6, level:'ยาก', type:'S', icon:'🌹',
+    text:'จัดกระถางกุหลาบ 3 มะลิ 4 เรียงแถว โดยกุหลาบห้ามอยู่ติดกันเลย',
+    ans: 1440, parts: ['4! × P(5,3)'],
+    eq: ['4!*p(5,3)', '4!xp(5,3)', '4!×p(5,3)', 'p(5,3)*4!', 'p(5,3)x4!', 'p(5,3)×4!'],
+    hint: 'เรียงมะลิ 4 กระถางเป็นกำแพงก่อน นับช่องว่างที่เกิด แล้วนำกุหลาบ 3 กระถางไปแทรก',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> เรียงมะลิให้เสร็จก่อนเป็นแนวกั้น แล้วนับดูว่าระหว่างและปลายแถวเกิดช่องว่างขึ้นกี่ช่อง',
+    reasons:[
+      'A: ไม่มีกระถางคู่ไหนที่ต้องวางชิดกัน และไม่มีคู่ไหนที่ห้ามชิดกัน จึงสลับที่ได้ทุกกระถาง',
+      'B: กุหลาบทั้ง 3 กระถางต้องวางเรียงติดกันเป็นแนวเดียว จึงมัดเป็นก้อนแล้วค่อยนับการสลับภายใน',
+      'C: กุหลาบสองกระถางใดมาชิดกันไม่ได้เลย จึงต้องวางมะลิให้เข้าที่ก่อนเพื่อสร้างช่องว่างคั่น แล้วค่อยเลือกช่องว่างให้กุหลาบลงไปอยู่'
+    ], correct:2
+  },
+  {
+    id:7, level:'ง่าย', type:'N', icon:'📝',
+    text:'เรียงสับเปลี่ยนตัวอักษร 4 ตัว จากคำว่า MATH',
+    ans: 24, parts: ['4!'],
+    eq: ['4!', 'p(4,4)'],
+    hint: 'ตัวอักษร 4 ตัวไม่ซ้ำกันเลย นำมาเรียงสับเปลี่ยนทั้งหมด',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> ไม่มีตัวอักษรคู่ไหนถูกบังคับให้อยู่ติดหรือห่างกันเลย นับตัวอักษรทั้งหมดตรงๆ ได้เลย',
+    reasons:[
+      'A: ไม่มีตัวอักษรคู่ไหนที่โจทย์บังคับให้อยู่ด้วยกัน และไม่มีคู่ไหนที่ห้ามอยู่ด้วยกัน จึงสลับที่ได้ทุกตัว',
+      'B: ต้องจับตัวอักษรบางคู่มัดไว้ด้วยกันก่อน แล้วจึงนำไปเรียงกับตัวที่เหลือ',
+      'C: ต้องเอาตัวอักษรบางตัวไปคั่นไว้ก่อน เพื่อกันไม่ให้อีกสองตัวมาอยู่ชิดกัน'
+    ], correct:0
+  },
+  {
+    id:8, level:'ปานกลาง', type:'G', icon:'🚙',
+    text:'รถเก๋ง 4 คัน กระบะ 3 คัน จอดเรียงแถว โดยกระบะจอดติดกันทั้งหมด',
+    ans: 720, parts: ['5! × 3!'],
+    eq: ['5!*3!', '3!*5!', '5!x3!', '3!x5!', '5!×3!', '3!×5!'],
+    hint: 'มัดกระบะ 3 คันเป็น 1 ก้อน นำไปจัดเรียงกับรถเก๋งที่เหลือ แล้วคูณด้วยจำนวนวิธีสลับที่ของกระบะในก้อน',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> รวมกระบะทั้งหมดเป็นก้อนเดียวก่อน แล้วนับว่ามีกี่ก้อนทั้งหมดที่ต้องจอดเรียง อย่าลืมสลับที่ในก้อนกระบะด้วย',
+    reasons:[
+      'A: ไม่มีรถคันไหนถูกกำหนดว่าต้องจอดชิดหรือห้ามจอดชิดกับคันใด จึงสลับช่องจอดได้อิสระ',
+      'B: กระบะทั้ง 3 คันต้องจอดเรียงติดกันเป็นแถบเดียว จึงมองเป็นก้อนเดียวไปจอดรวมกับรถเก๋ง แล้วค่อยนับว่าภายในก้อนสลับคันกันได้อีกกี่แบบ',
+      'C: กระบะสองคันใดมาจอดชิดกันไม่ได้ จึงต้องให้รถเก๋งจอดคั่นไว้ก่อนแล้วค่อยแทรกกระบะ'
+    ], correct:1
+  },
+  {
+    id:9, level:'ยาก', type:'S', icon:'🎓',
+    text:'ชาย 3 หญิง 3 ยืนแถวตรง โดยผู้หญิงห้ามยืนติดกันเลย',
+    ans: 144, parts: ['3! × P(4,3)'],
+    eq: ['3!*p(4,3)', 'p(4,3)*3!', '3!xp(4,3)', 'p(4,3)x3!', '3!×p(4,3)', 'p(4,3)×3!'],
+    hint: 'ให้ชาย 3 คนยืนเป็นกำแพงก่อน (สลับกันเองได้กี่วิธี?) นับช่องว่าง แล้วนำหญิง 3 คนไปแทรก',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> เรียงชายให้เสร็จก่อนเป็นแนวกั้น แล้วนับดูว่าระหว่างและปลายแถวเกิดช่องว่างขึ้นกี่ช่อง',
+    reasons:[
+      'A: ไม่มีใครถูกกำหนดว่าต้องยืนชิดหรือห้ามยืนชิดกับใคร ทุกคนจึงเลือกที่ยืนได้อิสระ',
+      'B: ผู้หญิงทั้ง 3 คนต้องยืนเรียงติดกัน จึงมัดรวมเป็นก้อนเดียวแล้วค่อยนับการสลับที่ภายใน',
+      'C: ผู้หญิงสองคนใดมายืนชิดกันไม่ได้เลย จึงให้ผู้ชายยืนเข้าที่ก่อนเพื่อสร้างช่องว่างคั่น แล้วค่อยเลือกช่องว่างให้ผู้หญิงแทรก'
+    ], correct:2
+  },
+  {
+    id:10, level:'ยาก', type:'G', icon:'📚',
+    text:'คณิต 3 เล่ม วิทย์ 2 เล่ม เรียงบนชั้น โดยวิชาเดียวกันต้องติดกัน',
+    ans: 24, parts: ['2! × 3! × 2!'],
+    eq: ['2!*3!*2!', '2!*2!*3!', '3!*2!*2!', '2!x3!x2!', '2!x2!x3!', '3!x2!x2!', '2!×3!×2!', '2!×2!×3!', '3!×2!×2!'],
+    hint: 'มัดหนังสือคณิต 1 ก้อน มัดวิทย์ 1 ก้อน นำ 2 ก้อนนี้มาสลับกันก่อน แล้วจึงคูณสลับที่ภายในก้อนของแต่ละวิชา',
+    extendedHint: '🚨 <b>ลองดูนะ:</b> รวมหนังสือแต่ละวิชาให้เป็นก้อนของตัวเองก่อน แล้วนับว่ามีกี่ก้อนที่ต้องสลับกัน อย่าลืมสลับที่ในแต่ละก้อนด้วย',
+    reasons:[
+      'A: ไม่มีหนังสือคู่ไหนถูกบังคับให้วางชิดหรือห้ามวางชิดกัน จึงสลับที่ได้ทุกเล่ม',
+      'B: หนังสือวิชาเดียวกันต้องเกาะกลุ่มกันไว้ จึงมัดคณิตเป็นก้อนหนึ่ง วิทย์เป็นอีกก้อนหนึ่ง สลับสองก้อนก่อน แล้วค่อยนับการสลับภายในแต่ละก้อน',
+      'C: หนังสือต่างวิชาห้ามวางชิดกัน จึงต้องเอาอีกวิชามาวางคั่นไว้ก่อนแล้วค่อยแทรก'
+    ], correct:1
+  }
+];
+
+/* ===================== ENGINE ===================== */
+var $ = function(i){ return document.getElementById(i); };
+var N = QUESTIONS.length;
+var MAX_PTS = N*30 + Math.max(0, N-2)*10;
+var SKEY = 'combi-' + CONFIG.id + '-v2';
+var ZONES = CONFIG.zones, ZMAP = {};
+ZONES.forEach(function(z){ ZMAP[z.k] = z; });
+QUESTIONS.forEach(function(q){ if (CONFIG.decorate) CONFIG.decorate(q); });
+var LVC = {'ง่าย':'lv-easy','ปานกลาง':'lv-mid','ยาก':'lv-hard'};
+var LETTER = ['A','B','C','D'];
+var S = null, sel = null, pend = null, curId = null;
+
+/* ---------- math evaluator ---------- */
+function fact(n){ if(n<0||!isFinite(n)) return NaN; var r=1; for(var i=2;i<=n;i++) r*=i; return r; }
+function nPr(n,r){ if(r<0||r>n) return 0; var v=1; for(var i=0;i<r;i++) v*=(n-i); return v; }
+function nCr(n,r){ if(r<0||r>n) return 0; return nPr(n,r)/fact(r); }
+function rawEval(s){
+  if(!/^[0-9+\-*/().e]+$/.test(s)) return null;
+  try { var v = Function('"use strict";return (' + s + ')')();
+        return (typeof v === 'number' && isFinite(v)) ? v : null; } catch(e){ return null; }
+}
+function evalExpr(raw){
+  if(raw == null) return null;
+  var s = String(raw).toLowerCase().replace(/\s+/g,'');
+  s = s.replace(/(\d),(?=\d{3}(\D|$))/g,'$1');
+  s = s.replace(/[×✕·∙]/g,'*').replace(/[÷]/g,'/');
+  s = s.replace(/[（［\[{]/g,'(').replace(/[）］\]}]/g,')');
+  s = s.replace(/(\d|\)|!)x(?=\d|\(|c\(|p\()/g,'$1*');
+  s = s.replace(/\^/g,'**');
+  /* สัญกรณ์แบบตำรา: ตัวส่วนที่เขียนติดกันหลัง / ถือเป็นก้อนเดียว เช่น 6!/3!2! = 6!/(3!*2!) */
+  s = s.replace(/\/((?:\d+!|[cp]\(\d+[,;]\d+\)){2,})/g, function(m, grp){ return '/(' + grp + ')'; });
+  /* การคูณแบบไม่เขียนเครื่องหมาย เช่น 3!2! = 3!*2! , 2(3+1) , (2)(3) */
+  s = s.replace(/!(?=[\dcp(])/g,'!*');
+  s = s.replace(/(\d|\))(?=[cp]\(|\()/g,'$1*');
+  s = s.replace(/\)(?=\d)/g,')*');
+  for(var g=0; g<80; g++){
+    var m = s.match(/([cp])\((\d+)[,;](\d+)\)/);
+    if(!m) break;
+    var val = (m[1]==='c') ? nCr(+m[2], +m[3]) : nPr(+m[2], +m[3]);
+    s = s.slice(0, m.index) + val + s.slice(m.index + m[0].length);
+  }
+  for(var g2=0; g2<80; g2++){
+    var mf = s.match(/(\d+)!/);
+    if(mf){ s = s.slice(0, mf.index) + fact(+mf[1]) + s.slice(mf.index + mf[0].length); continue; }
+    var i = s.indexOf(')!');
+    if(i < 0) break;
+    var d = 0, st = -1;
+    for(var k=i; k>=0; k--){
+      if(s[k] === ')') d++;
+      else if(s[k] === '('){ d--; if(d === 0){ st = k; break; } }
+    }
+    if(st < 0) break;
+    var inner = rawEval(s.slice(st+1, i));
+    if(inner === null) break;
+    s = s.slice(0, st) + fact(inner) + s.slice(i+2);
+  }
+  return rawEval(s);
+}
+function normEq(t){ return String(t).toLowerCase().replace(/\s+/g,'').replace(/[×✕]/g,'*').replace(/[÷]/g,'/'); }
+function eqOK(q, raw){
+  var n = normEq(raw);
+  if(!n) return false;
+  var list = q.eq || [];
+  for(var i=0;i<list.length;i++){ if(normEq(list[i]) === n) return true; }
+  if(!/[+\-*/!^]|[cp]\(/i.test(n)) return false;      /* ต้องแสดงวิธีคิด ไม่ใช่พิมพ์คำตอบเปล่า */
+  var v = evalExpr(n);
+  return v !== null && Math.abs(v - q.ans) < 1e-9;
+}
+
+/* ---------- state ---------- */
+/* สลับลำดับแบบ Fisher-Yates — กระจายทุกลำดับเท่ากันจริง
+   (การใช้ sort กับ Math.random()-0.5 ทำให้บางลำดับโผล่บ่อยกว่าลำดับอื่น) */
+function shuffle(a){
+  for(var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function blankState(){
+  var order = shuffle(QUESTIONS.map(function(q){ return q.id; }));
+  var st = { v:4, seat1:'', seat2:'', order:order, pts:0, streak:0, best:0, reason:[], placed:[], opened:[],
+             zone:{}, opt:{}, stats:{}, wrongZone:{}, hints:{}, calc:{} };
+  QUESTIONS.forEach(function(q){
+    st.stats[q.id] = {r:0,c:0,p:0};   /* r=ผิดเหตุผล p=วางผิดช่อง c=คำนวณผิด */
+    st.wrongZone[q.id] = [];          /* วางผิดไปช่องไหนบ้าง */
+    st.hints[q.id] = 0;               /* จำนวนครั้งที่ระบบต้องให้คำใบ้ */
+  });
+  return st;
+}
+var STORAGE_OK = (function(){
+  try { localStorage.setItem(SKEY + '-t', '1'); localStorage.removeItem(SKEY + '-t'); return true; }
+  catch(e){ return false; }
+})();
+function save(){
+  if(STORAGE_OK){ try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch(e){} }
+  queueSync();                     /* ส่งผลขึ้นจอครูอัตโนมัติ (หน่วง 2 วินาที) */
+}
+function loadState(){
+  try {
+    var raw = localStorage.getItem(SKEY); if(!raw) return null;
+    var o = JSON.parse(raw);
+    if(!o || o.v !== 4 || !o.order || o.order.length !== N) return null;
+    o.stats = o.stats || {}; o.opt = o.opt || {}; o.zone = o.zone || {};
+    o.reason = o.reason || []; o.placed = o.placed || []; o.opened = o.opened || [];
+    o.wrongZone = o.wrongZone || {}; o.hints = o.hints || {}; o.calc = o.calc || {};
+    o.seat1 = o.seat1 || ''; o.seat2 = o.seat2 || '';
+    QUESTIONS.forEach(function(q){
+      if(!o.stats[q.id]) o.stats[q.id] = {r:0,c:0,p:0};
+      if(!o.wrongZone[q.id]) o.wrongZone[q.id] = [];
+      if(!o.hints[q.id]) o.hints[q.id] = 0;
+    });
+    return o;
+  } catch(e){ return null; }
+}
+function byId(id){ for(var i=0;i<QUESTIONS.length;i++){ if(QUESTIONS[i].id === id) return QUESTIONS[i]; } return null; }
+function has(a,v){ return a.indexOf(v) >= 0; }
+
+/* ---------- HUD ---------- */
+function updateHUD(){
+  var done = S.placed.length, pct = Math.round(done/N*100);
+  $('s-pts').textContent = S.pts;
+  $('s-str').textContent = S.streak >= 3 ? S.streak + '🔥' : S.streak;
+  $('s-dn').textContent = done + '/' + N;
+  $('s-bar').style.width = pct + '%';
+  $('s-pct').textContent = pct + '%';
+}
+
+/* ---------- pool ---------- */
+function renderPool(){
+  killGhosts();
+  var pool = $('pool'); pool.innerHTML = '';
+  S.order.forEach(function(id, i){
+    var q = byId(id); if(!q) return;
+    var d = document.createElement('div');
+    d.setAttribute('data-id', id);
+    if(has(S.placed,id)){
+      d.className = 'card done';
+      d.innerHTML = '<span class="tag ok">✓ เสร็จแล้ว</span><div class="c-txt">' + q.icon + ' ' + q.text + '</div>';
+    } else if(has(S.reason,id)){
+      d.className = 'card ready' + (sel === id ? ' sel' : '');
+      d.innerHTML = '<span class="tag go">พร้อมวาง</span><div class="c-txt">' + q.icon + ' ' + q.text +
+                    '</div><div class="c-hint">' + (sel === id ? '▼ เลือกกล่องด้านล่าง' : 'แตะเพื่อเลือกกล่อง') + '</div>';
+      attachDrag(d, id);
+    } else if(has(S.opened,id)){
+      d.className = 'card open';
+      d.innerHTML = '<span class="tag wait">พักไว้</span><div class="c-txt">' + q.icon + ' ' + q.text +
+                    '</div><div class="c-hint">แตะเพื่อวิเคราะห์ต่อ</div>';
+      d.addEventListener('click', function(){ openCard(id); });
+    } else {
+      d.className = 'card new';
+      d.innerHTML = '<div class="c-no">' + (i+1) + '</div><div class="c-q">?</div><span class="tag ' +
+                    (LVC[q.level] || 'lv-mid') + '">' + q.level + '</span>';
+      d.addEventListener('click', function(){ openCard(id); });
+    }
+    pool.appendChild(d);
+  });
+}
+
+/* ---------- zones ---------- */
+function buildZones(){
+  var wrap = $('zones'); wrap.innerHTML = '';
+  ZONES.forEach(function(z){
+    var d = document.createElement('div');
+    d.className = 'zone'; d.id = 'z-' + z.k; d.style.setProperty('--zc', z.c);
+    d.innerHTML = '<div class="z-head"><div class="z-title">' + z.t + '</div><div class="z-sub">' + z.s +
+                  '</div><span class="z-cnt" id="zc-' + z.k + '">0 ข้อ</span></div><div id="drop-' + z.k + '"></div>';
+    d.addEventListener('click', function(){ if(sel !== null) tryPlace(sel, z.k); });
+    wrap.appendChild(d);
+  });
+  var row = $('pl-row'); row.innerHTML = '';
+  ZONES.forEach(function(z){
+    var b = document.createElement('button');
+    b.className = 'pl-btn'; b.style.setProperty('--zc', z.c);
+    b.textContent = z.short || z.t;
+    b.addEventListener('click', function(){ if(sel !== null) tryPlace(sel, z.k); });
+    row.appendChild(b);
+  });
+  var x = document.createElement('button');
+  x.className = 'pl-x'; x.innerHTML = '✕'; x.title = 'ยกเลิก';
+  x.addEventListener('click', function(){ sel = null; renderPool(); updatePlacer(); armZones(false); });
+  row.appendChild(x);
+}
+function dropInner(q){
+  var head = '<div>' + q.icon + ' ' + q.text + '</div>';
+  if(typeof q.ans === 'undefined') return head;
+  var c = S.calc[q.id];
+  if(c && c.ok){
+    return head + '<div class="d-m">' + (q.theory ? '<span class="k">' + q.theory + '</span>' : '') +
+           '<span class="v">= ' + q.ans + ' วิธี</span></div>';
+  }
+  return head + '<div class="d-m"><span class="k">🧮 แตะการ์ดนี้เพื่อคิดเลขต่อ</span></div>';
+}
+function addDropped(q, zk){
+  var box = $('drop-' + zk); if(!box) return;
+  var d = document.createElement('div'); d.className = 'drop'; d.id = 'dc-' + q.id;
+  d.innerHTML = dropInner(q);
+  if(CONFIG.calcMode !== 'none'){
+    d.style.cursor = 'pointer';
+    d.addEventListener('click', function(e){ e.stopPropagation(); reopenCalc(q.id); });
+  }
+  box.appendChild(d);
+  var c = $('zc-' + zk);
+  if(c) c.textContent = box.children.length + ' ข้อ';
+}
+function refreshDropped(id){
+  var el = $('dc-' + id), q = byId(id);
+  if(el && q) el.innerHTML = dropInner(q);
+}
+function reopenCalc(id){
+  if(pend) return;
+  var rec = S.calc[id];
+  if(rec && rec.ok){ toast('ข้อนี้คิดเลขถูกแล้ว ไม่ต้องทำซ้ำนะ', 'ok'); return; }
+  var q = byId(id);
+  if(!q || !S.zone[id]) return;
+  pend = { q:q, zone:S.zone[id], tries:0 };
+  openCalc();
+}
+function rebuildDropped(){
+  ZONES.forEach(function(z){ $('drop-' + z.k).innerHTML = ''; $('zc-' + z.k).textContent = '0 ข้อ'; });
+  S.placed.forEach(function(id){ var q = byId(id); if(q && S.zone[id]) addDropped(q, S.zone[id]); });
+}
+function armZones(on){
+  ZONES.forEach(function(z){ $('z-' + z.k).classList.toggle('arm', !!on); });
+  $('callout').classList.toggle('on', !!on);
+}
+function zoneAt(x, y){
+  for(var i=0;i<ZONES.length;i++){
+    var r = $('z-' + ZONES[i].k).getBoundingClientRect();
+    if(x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return ZONES[i].k;
+  }
+  return null;
+}
+function hoverZone(x, y){
+  var k = zoneAt(x, y);
+  ZONES.forEach(function(z){ $('z-' + z.k).classList.toggle('hot', z.k === k); });
+}
+function clearHover(){ ZONES.forEach(function(z){ $('z-' + z.k).classList.remove('hot'); }); }
+
+/* ---------- selection / drag ---------- */
+function selectCard(id, force){
+  sel = (sel === id && !force) ? null : id;
+  renderPool(); updatePlacer(); armZones(sel !== null);
+}
+function updatePlacer(){
+  var on = sel !== null;
+  $('placer').classList.toggle('on', on);
+  if(on){ var q = byId(sel); $('pl-name').textContent = q ? (q.icon + ' ' + q.text.slice(0,26) + (q.text.length>26?'…':'')) : '—'; }
+}
+function killGhosts(){
+  var g = document.querySelectorAll('.drag-ghost');
+  for(var i = 0; i < g.length; i++) g[i].remove();
+}
+
+/* สถานะการลากเก็บไว้ที่เดียว และดักเหตุการณ์ที่ระดับ document
+   เพื่อไม่ให้พึ่ง pointer capture ของการ์ดใบเดียว (หลุดได้หลายกรณี
+   เช่น การ์ดถูกวาดใหม่ เบราว์เซอร์ยกเลิก หรือปล่อยนิ้วนอกการ์ด) */
+var drag = null;
+
+function attachDrag(node, id){
+  node.addEventListener('pointerdown', function(e){
+    if(e.button !== undefined && e.button !== 0) return;
+    killGhosts();
+    drag = { id:id, node:node, sx:e.clientX, sy:e.clientY, moved:false, ghost:null };
+    try { node.setPointerCapture(e.pointerId); } catch(err){}
+  });
+}
+
+function dragCleanup(){ killGhosts(); clearHover(); }
+
+document.addEventListener('pointermove', function(e){
+  if(!drag) return;
+  var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+  if(!drag.moved && Math.sqrt(dx*dx + dy*dy) > 12){
+    drag.moved = true;
+    var r = drag.node.getBoundingClientRect();
+    var g = drag.node.cloneNode(true);
+    g.className = 'card ready drag-ghost';
+    g.style.left = r.left + 'px'; g.style.top = r.top + 'px'; g.style.width = r.width + 'px';
+    document.body.appendChild(g);
+    drag.ghost = g;
+    /* เลือกการ์ดโดยไม่วาดกระดานใหม่ เพราะจะทำให้การ์ดที่กำลังลากถูกลบกลางคัน */
+    sel = drag.id;
+    drag.node.classList.add('sel');
+    armZones(true);
+    updatePlacer();
+  }
+  if(drag.moved && drag.ghost){
+    e.preventDefault();
+    drag.ghost.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04) rotate(-2deg)';
+    hoverZone(e.clientX, e.clientY);
+  }
+}, {passive:false});
+
+document.addEventListener('pointerup', function(e){
+  if(!drag) return;
+  var d = drag; drag = null;
+  dragCleanup();
+  if(d.moved){
+    var k = zoneAt(e.clientX, e.clientY);
+    if(k){ tryPlace(d.id, k); return; }
+    renderPool(); updatePlacer();          /* ปล่อยนอกช่อง: คืนสภาพการ์ดให้ปกติ */
+  } else {
+    selectCard(d.id);                      /* แตะเฉยๆ = เลือก/ยกเลิกเลือก */
+  }
+});
+
+document.addEventListener('pointercancel', function(){
+  if(!drag) return;
+  drag = null; dragCleanup(); renderPool(); updatePlacer();
+});
+
+/* ---------- reason panel ---------- */
+function optOrder(q){
+  if(!S.opt[q.id]){
+    var idx = q.reasons.map(function(_, i){ return i; });
+    idx = shuffle(idx);
+    S.opt[q.id] = idx; save();
+  }
+  return S.opt[q.id];
+}
+function stripLetter(t){ return String(t).replace(/^\s*[A-Da-d]\s*[:：]\s*/, ''); }
+function openCard(id){
+  if(has(S.placed,id) || has(S.reason,id)) return;
+  curId = id;
+  if(!has(S.opened,id)){ S.opened.push(id); save(); }
+  var q = byId(id);
+  $('p-q').innerHTML = q.icon + ' ' + q.text;
+  var box = $('p-opts'); box.innerHTML = '';
+  var order = optOrder(q);
+  order.forEach(function(origIdx, pos){
+    var b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = '<span class="l">' + LETTER[pos] + '</span><span>' + stripLetter(q.reasons[origIdx]) + '</span>';
+    b.addEventListener('click', function(){ checkReason(pos, b); });
+    box.appendChild(b);
+  });
+  $('panel').classList.add('on');
+  renderPool();
+  setTimeout(function(){ $('panel').scrollIntoView({behavior:'smooth', block:'center'}); }, 80);
+}
+function closePanel(){ $('panel').classList.remove('on'); curId = null; }
+function checkReason(pos, btn){
+  var q = byId(curId); if(!q || has(S.reason, q.id)) return;
+  var order = optOrder(q);
+  if(order[pos] === q.correct){
+    btn.classList.add('good');
+    S.pts += 10; S.reason.push(q.id); updateHUD(); save();
+    flyPoints('+10');
+    toast('+10 วิเคราะห์ถูกต้อง! ต่อไปเลือกกล่องที่ตรงกับเหตุผลนี้', 'ok');
+    setTimeout(function(){
+      closePanel(); renderPool(); selectCard(q.id, true);
+      var c = $('z-' + ZONES[0].k); if(c) c.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 620);
+  } else {
+    btn.classList.add('bad');
+    S.stats[q.id].r++; S.pts = Math.max(0, S.pts - 5); S.streak = 0; updateHUD(); save();
+    var h = CONFIG.reasonHint || q.hint || 'ลองอ่านโจทย์อีกครั้งแล้วคิดใหม่นะ';
+    toast('-5 คะแนน · 💡 ' + h, 'bad');
+    var btns = $('p-opts').querySelectorAll('button');
+    Array.prototype.forEach.call(btns, function(b){ b.disabled = true; });
+    setTimeout(function(){
+      Array.prototype.forEach.call(btns, function(b){ b.disabled = false; });
+      btn.classList.remove('bad');
+    }, CONFIG.lockMs || 2500);
+  }
+}
+
+/* ---------- placing ---------- */
+function tryPlace(id, zk){
+  var q = byId(id);
+  if(!q || !has(S.reason, id) || has(S.placed, id)) return;
+  if(q.type === zk){
+    var withCalc = (CONFIG.calcMode !== 'none');
+    award(q, zk, withCalc);          /* +20 ทันทีที่จัดโซนถูก ตามเกณฑ์ข้อ 7.2 */
+    if(withCalc){ pend = { q:q, zone:zk, tries:0 }; openCalc(); }
+  } else {
+    S.stats[id].p++;
+    if(!S.wrongZone[id]) S.wrongZone[id] = [];
+    S.wrongZone[id].push(zk);        /* บันทึกว่าเลือกผิดไปช่องไหน ใช้ทำตารางความสับสน */
+    S.pts = Math.max(0, S.pts - 10); S.streak = 0; updateHUD(); save();
+    var zEl = $('z-' + zk);
+    zEl.classList.add('nope');
+    setTimeout(function(){ zEl.classList.remove('nope'); }, 420);
+    toast('-10 คะแนน! กล่องนี้ขัดกับเหตุผลที่เลือกไว้ ลองทบทวนอีกครั้ง', 'bad');
+  }
+}
+function award(q, zk, withCalc){
+  S.pts += 20; S.streak++; if(S.streak > S.best) S.best = S.streak;
+  var bonus = S.streak >= 3 ? 10 : 0;
+  if(bonus) S.pts += bonus;
+  S.placed.push(q.id); S.zone[q.id] = zk;
+  sel = null; pend = null;
+  updateHUD(); save();
+  addDropped(q, zk);
+  renderPool(); updatePlacer(); armZones(false);
+  flyPoints('+' + (20 + bonus));
+  toast(bonus ? ('+20 ถูกต้อง! +' + bonus + ' โบนัสต่อเนื่อง ' + S.streak + ' ครั้ง 🔥') : '+20 ถูกต้อง! เยี่ยมมาก',
+        bonus ? 'gold' : 'ok');
+  if(!withCalc) maybeFinish();
+}
+function maybeFinish(){
+  if(S.placed.length === N && !pend) setTimeout(function(){ confetti(); openSummary(true); }, 550);
+}
+
+/* ---------- calc modal ---------- */
+var calcLockIv = null;
+function lockCalcBtn(sec){
+  var b = $('c-ok'); if(!b) return;
+  var left = sec;
+  b.disabled = true; b.textContent = 'ลองคิดใหม่ (' + left + ')';
+  if(calcLockIv) clearInterval(calcLockIv);
+  calcLockIv = setInterval(function(){
+    left--;
+    if(left <= 0){ clearInterval(calcLockIv); calcLockIv = null; b.disabled = false; b.textContent = 'ยืนยันคำตอบ'; }
+    else b.textContent = 'ลองคิดใหม่ (' + left + ')';
+  }, 1000);
+}
+/* คำใบ้แบบไต่ระดับ — ให้ไกด์ไลน์สอนวิธีคิดตั้งแต่เปิดกล่อง เพราะเกมคือตัวสอน
+   ถ้ายังไม่ถูก จึงค่อยๆ ปล่อยคำใบ้ที่ละเอียดขึ้นทีละขั้น */
+function showCalcHint(q, zk, n){
+  var ex = $('c-extra'); if(!ex) return;
+  var z = ZMAP[zk] || {};
+  if(n <= 0)       ex.innerHTML = '💡 <b>ไกด์ไลน์:</b> ' + (q.hint || z.nudge || '');
+  else if(n === 1) ex.innerHTML = (q.extendedHint || ('🚨 <b>ลองดูนะ:</b> ' + (z.nudge || ''))) +
+                   (z.shape ? '<br>หน้าตาของวิธีคิดในกล่องนี้มักเป็นแบบ <code>' + z.shape + '</code>' : '');
+  else             ex.innerHTML = '🧩 <b>โครงสร้างที่ควรได้:</b> <code>' + (q.theory || '—') +
+                                  '</code><br>ลองแทนตัวเลขตามโจทย์แล้วคิดอีกครั้งนะ';
+  ex.classList.add('on');
+}
+function openCalc(){
+  var q = pend.q, z = ZMAP[pend.zone];
+  $('c-q').innerHTML = '<b>' + q.icon + ' โจทย์:</b> ' + q.text;
+  $('c-zone').innerHTML = 'ลักษณะที่คุณเลือก: <b>' + z.theory + '</b>';
+  $('c-guide').innerHTML = '🧭 <b>เริ่มจากตรงนี้:</b> ' + (z.nudge || q.hint || '');
+  showCalcHint(q, pend.zone, (S.calc[q.id] && S.calc[q.id].tries) || 0);
+  if(CONFIG.calcMode === 'eq'){
+    $('c-eqwrap').style.display = '';
+    var hb = $('c-symhelp-box'), hbtn = $('c-symhelp');
+    if(hb){ hb.classList.remove('on'); }
+    if(hbtn){ hbtn.textContent = 'ปุ่มพวกนี้หมายถึงอะไร?'; }
+    $('c-eq').value = '';
+    $('c-shape').innerHTML = '';
+    $('c-vlab').textContent = '2. ผลลัพธ์สุทธิ (จำนวนวิธี)';
+  } else {
+    $('c-eqwrap').style.display = 'none';
+    $('c-vlab').textContent = 'ผลลัพธ์สุทธิ (จำนวนวิธี)';
+  }
+  $('c-val').value = '';
+  if(calcLockIv){ clearInterval(calcLockIv); calcLockIv = null; }
+  var okb = $('c-ok'); if(okb){ okb.disabled = false; okb.textContent = 'ยืนยันคำตอบ'; }
+  openMask('m-calc');
+  setTimeout(function(){ var t = (CONFIG.calcMode === 'eq') ? $('c-eq') : $('c-val'); if(t) t.focus(); }, 180);
+}
+function checkCalc(){
+  if(!pend) return;
+  var q = pend.q, zk = pend.zone;
+  var eqRaw = (CONFIG.calcMode === 'eq') ? $('c-eq').value : '';
+  var okEq = (CONFIG.calcMode === 'eq') ? eqOK(q, eqRaw) : true;
+  var valRaw = $('c-val').value;
+  var v = evalExpr(valRaw);
+  var okVal = (v !== null) && Math.abs(v - q.ans) < 1e-9;
+  if(!S.calc[q.id]) S.calc[q.id] = { tries:0, ok:false, skipped:false, firstEq:'', firstVal:'' };
+  var rec = S.calc[q.id];
+  if(rec.tries === 0){ rec.firstEq = eqRaw; rec.firstVal = valRaw; }
+
+  if(okEq && okVal){
+    rec.ok = true; rec.skipped = false;
+    var id = q.id;
+    closeMask('m-calc'); pend = null;
+    save(); refreshDropped(id);
+    toast('คิดเลขถูกต้อง! บันทึกวิธีคิดเรียบร้อย ✓', 'ok');
+    maybeFinish();
+    return;
+  }
+
+  /* คำนวณผิดหัก 5 คะแนนตั้งแต่ครั้งแรก เพื่อกันการเดาสุ่ม — ตรงกับเกณฑ์ข้อ 7.2 ในแผนการสอน
+     หมายเหตุ: ไม่ตัด streak เพราะ streak ผูกกับการจัดโซนตามเกณฑ์ 7.2 */
+  rec.tries++; pend.tries++; S.stats[q.id].c++;
+  S.pts = Math.max(0, S.pts - 5); updateHUD();
+  lockCalcBtn(3);                 /* หน่วงเวลาให้คิดก่อนกดใหม่ กันการกดรัวเดาสุ่ม */
+  showCalcHint(q, zk, rec.tries);
+  if(rec.tries >= 2) S.hints[q.id] = (S.hints[q.id] || 0) + 1;
+  save();
+  if(!okEq && okVal){
+    toast('-5 คะแนน · ผลลัพธ์ถูกแล้ว แต่ช่วยเขียนวิธีคิดให้ตรงกับคำตอบด้วยนะ', 'bad');
+    $('c-eq').focus();
+  } else if(okEq && !okVal){
+    toast('-5 คะแนน · วิธีคิดใช้ได้แล้ว แต่ผลลัพธ์ยังไม่ถูก ลองคิดเลขอีกครั้ง', 'bad');
+    $('c-val').focus();
+  } else {
+    toast('-5 คะแนน · ยังไม่ถูก ลองอ่านคำใบ้ที่เพิ่งขึ้นมาแล้วคิดใหม่อีกครั้ง', 'bad');
+    var t = (CONFIG.calcMode === 'eq') ? $('c-eq') : $('c-val'); if(t) t.focus();
+  }
+}
+function skipCalc(){
+  if(pend){
+    var id = pend.q.id;
+    if(!S.calc[id]) S.calc[id] = { tries:0, ok:false, skipped:false, firstEq:'', firstVal:'' };
+    if(!S.calc[id].ok) S.calc[id].skipped = true;
+    save(); refreshDropped(id);
+  }
+  closeMask('m-calc');
+  pend = null; sel = null;
+  renderPool(); updatePlacer(); armZones(false);
+  toast('เก็บข้อนี้ไว้คิดเลขทีหลังได้ แตะการ์ดในช่องเพื่อทำต่อ', '');
+  maybeFinish();
+}
+
+/* ---------- summary ---------- */
+/* ---------- เครื่องมือรายงานผลตามเกณฑ์ข้อ 7.3 ---------- */
+function levelOf(pct){
+  return pct >= 80 ? 'ดีมาก' : pct >= 60 ? 'ดี' : pct >= 40 ? 'พอใช้' : 'ต้องปรับปรุง';
+}
+function zName(k){ return (ZMAP[k] && (ZMAP[k].t || ZMAP[k].short)) || k; }   /* ใช้ชื่อเต็มในรายงาน อ่านง่ายกว่าชื่อย่อที่มีการตัดบรรทัด */
+function missList(){
+  return QUESTIONS.map(function(q){
+    var s = S.stats[q.id];
+    return { q:q, r:s.r, p:s.p, c:s.c, total:s.r + s.p + s.c };
+  }).filter(function(x){ return x.total > 0; })
+    .sort(function(a,b){ return (b.total - a.total) || (a.q.id - b.q.id); });
+}
+function confusionList(){
+  var map = {}, out = [], k, a;
+  QUESTIONS.forEach(function(q){
+    (S.wrongZone[q.id] || []).forEach(function(zk){
+      var key = q.type + '>' + zk;
+      map[key] = (map[key] || 0) + 1;
+    });
+  });
+  for(k in map){ a = k.split('>'); out.push({ from:a[0], to:a[1], n:map[k] }); }
+  return out.sort(function(x,y){ return y.n - x.n; });
+}
+function reportStats(){
+  var rFirst = 0, pFirst = 0, cFirst = 0, calcDone = 0, rW = 0, pW = 0, cW = 0, hints = 0;
+  S.reason.forEach(function(id){ if(S.stats[id].r === 0) rFirst++; });
+  S.placed.forEach(function(id){ if(S.stats[id].p === 0) pFirst++; });
+  QUESTIONS.forEach(function(q){
+    var s = S.stats[q.id];
+    rW += s.r; pW += s.p; cW += s.c; hints += (S.hints[q.id] || 0);
+    var c = S.calc[q.id];
+    if(c && c.ok){ calcDone++; if(c.tries === 0) cFirst++; }
+  });
+  return { pct: Math.round(S.pts / MAX_PTS * 100), rFirst:rFirst, pFirst:pFirst, cFirst:cFirst,
+           calcDone:calcDone, rW:rW, pW:pW, cW:cW, hints:hints };
+}
+function buildReportText(){
+  var st = reportStats();
+  var top = missList().slice(0, 5).map(function(x){ return 'ข้อ ' + x.q.id + ' (' + x.total + ' ครั้ง)'; }).join(', ') || 'ไม่มี';
+  var conf = confusionList().slice(0, 3).map(function(x){ return zName(x.from) + ' → ' + zName(x.to) + ' ' + x.n + ' ครั้ง'; }).join(', ') || 'ไม่มี';
+  var L = [];
+  L.push('คาบ ' + CONFIG.id.replace('c','') + ' | เลขที่ ' + (groupId() || '-') + ' | ' +
+         S.pts + '/' + MAX_PTS + ' (' + st.pct + '%) ระดับ ' + levelOf(st.pct));
+  L.push('จัดโซนสำเร็จ ' + S.placed.length + '/' + N +
+         ' · เหตุผลถูกครั้งแรก ' + st.rFirst + '/' + S.reason.length +
+         ' · วางถูกครั้งแรก ' + st.pFirst + '/' + S.placed.length);
+  if(CONFIG.calcMode !== 'none'){
+    L.push('คิดเลขสำเร็จ ' + st.calcDone + '/' + S.placed.length + ' · ถูกครั้งแรก ' + st.cFirst +
+           ' · ใช้คำใบ้ ' + st.hints + ' ครั้ง');
+  }
+  L.push('ข้อที่ทำผิดมากที่สุด: ' + top);
+  L.push('สับสนบ่อย: ' + conf);
+  return L.join('\n');
+}
+function buildCSV(){
+  var st = reportStats();
+  var top = missList().slice(0, 5).map(function(x){ return 'ข้อ' + x.q.id + '=' + x.total; }).join(' ') || '-';
+  var conf = confusionList().slice(0, 3).map(function(x){ return zName(x.from) + '>' + zName(x.to) + '=' + x.n; }).join(' ') || '-';
+  var head = ['เลขที่','คาบ','คะแนน','คะแนนเต็ม','ร้อยละ','ระดับ','จัดโซนสำเร็จ',
+              'เหตุผลถูกครั้งแรก','วางถูกครั้งแรก','คิดเลขสำเร็จ','คิดเลขถูกครั้งแรก',
+              'ผิดเหตุผลรวม','ผิดช่องรวม','ผิดคำนวณรวม','ใช้คำใบ้','ต่อเนื่องสูงสุด',
+              'ข้อที่ทำผิดมากที่สุด','สับสนบ่อย'];
+  var row = [groupId(), CONFIG.id.replace('c',''), S.pts, MAX_PTS, st.pct, levelOf(st.pct),
+             S.placed.length + '/' + N, st.rFirst, st.pFirst, st.calcDone, st.cFirst,
+             st.rW, st.pW, st.cW, st.hints, S.best, top, conf];
+  function esc(v){ v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  return head.join(',') + '\n' + row.map(esc).join(',');
+}
+function refreshReportBox(){ var ta = $('sum-text'); if(ta) ta.value = buildReportText(); }
+function downloadCSV(){
+  try {
+    var blob = new Blob(['﻿' + buildCSV()], { type:'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'ผลคาบ' + CONFIG.id.replace('c','') + '_เลขที่' + (groupId() || 'ไม่ระบุ') + '.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1200);
+    toast('บันทึกไฟล์แล้ว เปิดดูได้ในแอปไฟล์/โฟลเดอร์ดาวน์โหลด', 'ok');
+  } catch(e){
+    toast('เครื่องนี้บันทึกไฟล์ไม่ได้ ให้ใช้ปุ่มคัดลอกผลแทน', 'bad');
+  }
+}
+function copyReport(){
+  var t = buildReportText(), ta = $('sum-text');
+  if(ta){ ta.value = t; ta.focus(); ta.setSelectionRange(0, t.length); }
+  var ok = function(){ toast('คัดลอกผลแล้ว นำไปวางส่งครูได้เลย', 'ok'); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(ok, function(){ toast('กดค้างที่กล่องข้อความ แล้วเลือก "คัดลอก"', ''); });
+  } else {
+    try { document.execCommand('copy'); ok(); }
+    catch(e){ toast('กดค้างที่กล่องข้อความ แล้วเลือก "คัดลอก"', ''); }
+  }
+}
+
+function openSummary(finished){
+  var done = S.placed.length;
+  var waiting = S.reason.length - done;
+  var untouched = N - S.reason.length;
+  var st = reportStats();
+  var pct = st.pct, lv = levelOf(pct);
+  var ringLen = 2 * Math.PI * 52;
+  var msg = finished
+    ? 'ทำครบทุกข้อแล้ว! ผลการประเมินอยู่ในระดับ "' + lv + '"'
+    : (done === 0 ? 'เริ่มจากแตะการ์ดสักใบเพื่อวิเคราะห์ได้เลย' : 'กำลังไปได้สวย! ทำต่อได้เรื่อยๆ ไม่มีจับเวลา');
+
+  var rows = S.order.map(function(id){
+    var q = byId(id), s = S.stats[id], ic, stt;
+    function dot(c){ return '<span class="dot" style="background:' + c + '"></span>'; }
+    if(has(S.placed, id)){
+      var c = S.calc[id];
+      if(CONFIG.calcMode !== 'none' && !(c && c.ok)){ ic = dot('var(--a2)'); stt = 'จัดโซนแล้ว รอคิดเลข'; }
+      else { ic = dot('var(--ok)'); stt = 'สำเร็จ'; }
+    }
+    else if(has(S.reason, id)){ ic = dot('var(--gold)'); stt = 'รอวางช่อง'; }
+    else if(has(S.opened, id)){ ic = dot('#fb923c'); stt = 'พักไว้'; }
+    else { ic = dot('#44546f'); stt = 'ยังไม่เริ่ม'; }
+    var miss = s.r + s.c + s.p;
+    return '<div class="qrow"><span class="ic">' + ic + '</span><span class="tx">ข้อ ' + q.id + ' · ' + q.text + '</span><span class="rt">' + stt + (miss ? ' · พลาด ' + miss : '') + '</span></div>';
+  }).join('');
+
+  var top5 = missList().slice(0, 5);
+  var topHtml = top5.length ? top5.map(function(x){
+    var parts = [];
+    if(x.r) parts.push('เหตุผล ' + x.r);
+    if(x.p) parts.push('วางช่อง ' + x.p);
+    if(x.c) parts.push('คำนวณ ' + x.c);
+    return '<div class="qrow"><span class="ic" style="flex:0 0 46px;font-size:11px;color:var(--bad);font-weight:700">ข้อ ' +
+           x.q.id + '</span><span class="tx">' + x.q.text +
+           '</span><span class="rt">พลาด ' + x.total + ' ครั้ง<br>' + parts.join(' · ') + '</span></div>';
+  }).join('') : '<div class="qrow"><span class="tx">ยังไม่มีข้อที่ทำผิดเลย</span></div>';
+
+  var confArr = confusionList().slice(0, 4);
+  var confHtml = confArr.length ? confArr.map(function(x){
+    return '<div class="ln"><span>ควรเป็น "' + zName(x.from) + '" แต่เลือก "' + zName(x.to) + '"</span><b>' + x.n + ' ครั้ง</b></div>';
+  }).join('') : '<div class="ln"><span>ยังไม่มีการวางผิดช่อง</span><b>—</b></div>';
+
+  var lab = 'font-size:11px;font-weight:700;color:#6b7c99;letter-spacing:.5px;margin:16px 0 7px';
+
+  $('sum-body').innerHTML =
+    '<h3>' + (finished ? 'จบเกมแล้ว! สรุปผลงาน' : 'สรุปคะแนนตอนนี้') + '</h3>' +
+    '<div class="ring-wrap">' +
+      '<svg class="ring" viewBox="0 0 120 120"><defs><linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0%" stop-color="' + '#a78bfa' + '"/><stop offset="100%" stop-color="' + '#fb923c' + '"/></linearGradient></defs>' +
+      '<circle class="bgc" cx="60" cy="60" r="52"></circle>' +
+      '<circle class="fgc" cx="60" cy="60" r="52" stroke-dasharray="' + ringLen +
+      '" stroke-dashoffset="' + (ringLen * (1 - Math.min(1, S.pts / MAX_PTS))) + '"></circle></svg>' +
+      '<div class="ring-txt"><div class="big">' + S.pts + '</div>' +
+      '<div class="small">จากคะแนนเต็ม ' + MAX_PTS + ' คะแนน (' + pct + '%) · ระดับ <b style="color:var(--ok)">' + lv + '</b></div>' +
+      '<div class="msg">' + msg + '</div></div>' +
+    '</div>' +
+    '<div class="grid3">' +
+      '<div class="mini"><span class="n" style="color:var(--ok)">' + done + '</span><span class="t">จัดโซนสำเร็จ</span></div>' +
+      '<div class="mini"><span class="n" style="color:var(--gold)">' + waiting + '</span><span class="t">รอวางช่อง</span></div>' +
+      '<div class="mini"><span class="n" style="color:#93a4bf">' + untouched + '</span><span class="t">ยังไม่เริ่ม</span></div>' +
+    '</div>' +
+    '<div class="lines">' +
+      '<div class="ln"><span>ระดับผลการประเมิน (เกณฑ์ 80/60/40%)</span><b>' + lv + '</b></div>' +
+      '<div class="ln"><span>ให้เหตุผลถูกตั้งแต่ครั้งแรก</span><b>' + st.rFirst + '/' + S.reason.length + ' ข้อ</b></div>' +
+      '<div class="ln"><span>จัดโซนถูกตั้งแต่ครั้งแรก</span><b>' + st.pFirst + '/' + done + ' ข้อ</b></div>' +
+      (CONFIG.calcMode === 'none' ? '' :
+        '<div class="ln"><span>คิดเลขสำเร็จ (ถูกตั้งแต่ครั้งแรก)</span><b>' + st.calcDone + '/' + done + ' (' + st.cFirst + ')</b></div>' +
+        '<div class="ln"><span>จำนวนครั้งที่ใช้คำใบ้</span><b>' + st.hints + ' ครั้ง</b></div>') +
+      '<div class="ln"><span>ต่อเนื่องสูงสุด</span><b>' + S.best + ' ครั้ง</b></div>' +
+    '</div>' +
+    '<div style="' + lab + '">ข้อที่ทำผิดมากที่สุด</div>' +
+    '<div class="qlist" style="max-height:200px">' + topHtml + '</div>' +
+    '<div style="' + lab + '">จุดที่สับสนบ่อย</div>' +
+    '<div class="lines" style="border-top:0;padding-top:0">' + confHtml + '</div>' +
+    '<div style="' + lab + '">ผลรายข้อ</div>' +
+    '<div class="qlist">' + rows + '</div>' +
+    '<div style="' + lab + '">ส่งผลให้ครู</div>' +
+    '<div class="field" style="margin-bottom:9px">' +
+      '<label>เลขที่ของทั้งคู่</label>' +
+      '<div style="display:flex;gap:10px">' +
+        '<input class="inp" id="sum-s1" type="text" inputmode="numeric" placeholder="คนที่ 1" value="' + (S.seat1 || '') + '">' +
+        '<input class="inp" id="sum-s2" type="text" inputmode="numeric" placeholder="คนที่ 2" value="' + (S.seat2 || '') + '">' +
+      '</div>' +
+      '<div class="legend" id="fb-stat">' + (fbOn() ? (fbLast || 'พร้อมส่งขึ้นจอครูอัตโนมัติ') : 'ไฟล์นี้ยังไม่ได้ตั้งค่า Firebase (ใช้ปุ่มคัดลอก/CSV แทนได้)') + '</div>' +
+    '</div>' +
+    '<textarea id="sum-text" readonly style="width:100%;height:104px;background:#0f1828;border:1px solid var(--line);' +
+      'border-radius:11px;color:#cfdaec;font-family:monospace;font-size:11.5px;padding:10px;line-height:1.6"></textarea>' +
+    '<div class="m-btns" style="margin-top:9px">' +
+      '<button class="btn ghost" id="sum-copy">คัดลอกผล</button>' +
+      '<button class="btn go" id="sum-send">ส่งขึ้นจอครู</button>' +
+    '</div>' +
+    '<div class="m-btns" style="margin-top:8px">' +
+      '<button class="btn ghost" id="sum-csv">บันทึก CSV (สำรอง)</button>' +
+    '</div>' +
+    '<div class="note" style="margin-top:12px">' + (STORAGE_OK
+      ? 'คะแนนถูกบันทึกในเครื่องอัตโนมัติ ถ้าหมดคาบก่อน เปิดไฟล์นี้ใหม่จะทำต่อจากเดิมได้ (ไม่มีการจับเวลา)'
+      : 'เบราว์เซอร์นี้ปิดการบันทึกอัตโนมัติ คะแนนจะหายเมื่อปิดหน้า — ให้คัดลอกผลหรือถ่ายภาพหน้านี้ไว้ก่อน') + '</div>' +
+    '<div class="m-btns">' +
+      '<button class="btn ghost" id="sum-reset">เริ่มใหม่</button>' +
+      '<button class="btn go" id="sum-close">' + (finished ? 'ดูกระดานอีกครั้ง' : 'ทำต่อ') + '</button>' +
+    '</div>';
+
+  refreshReportBox();
+  ['1','2'].forEach(function(n){
+    var el = $('sum-s' + n);
+    if(!el) return;
+    el.addEventListener('input', function(){
+      S['seat' + n] = el.value.replace(/[^0-9]/g, '').slice(0, 3);
+      save(); refreshReportBox();
+    });
+  });
+  $('sum-copy').addEventListener('click', copyReport);
+  $('sum-csv').addEventListener('click', downloadCSV);
+  $('sum-send').addEventListener('click', function(){ fbSend(true); });
+  $('sum-close').addEventListener('click', function(){ closeMask('m-sum'); });
+  $('sum-reset').addEventListener('click', function(){
+    if(confirm('เริ่มเกมใหม่ทั้งหมด? คะแนนและความก้าวหน้าเดิมจะถูกล้าง')){
+      closeMask('m-sum'); init(true); toast('เริ่มใหม่แล้ว ขอให้สนุกนะ', 'ok');
+    }
+  });
+  openMask('m-sum');
+}
+
+/* ---------- fx ---------- */
+var tTimer = null;
+function toast(msg, kind){
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast on ' + (kind || '');
+  if(tTimer) clearTimeout(tTimer);
+  tTimer = setTimeout(function(){ t.className = 'toast ' + (kind || ''); }, 4200);
+}
+function flyPoints(txt){
+  var r = $('s-pts').getBoundingClientRect();
+  var f = document.createElement('div');
+  f.className = 'fly'; f.textContent = txt;
+  f.style.left = (r.left + r.width/2 - 14) + 'px';
+  f.style.top = (r.top - 6) + 'px';
+  document.body.appendChild(f);
+  setTimeout(function(){ f.remove(); }, 1000);
+}
+function confetti(){
+  var colors = ['#a78bfa','#fb923c','#34d399','#fbbf24','#f472b6'];
+  for(var i=0;i<26;i++){
+    var c = document.createElement('div');
+    c.className = 'conf';
+    c.style.left = Math.random()*100 + 'vw';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = (1.6 + Math.random()*1.4) + 's';
+    c.style.animationDelay = (Math.random()*0.5) + 's';
+    document.body.appendChild(c);
+    (function(el){ setTimeout(function(){ el.remove(); }, 3600); })(c);
+  }
+}
+function openMask(id){ $(id).classList.add('on'); }
+function closeMask(id){ $(id).classList.remove('on'); }
+
+/* ---------- init ---------- */
+function init(fresh){
+  S = fresh ? blankState() : (loadState() || blankState());
+  sel = null; pend = null; curId = null;
+  closePanel(); closeMask('m-calc'); closeMask('m-sum');
+  buildZones(); renderPool(); rebuildDropped();
+  updateHUD(); updatePlacer(); armZones(false);
+  save();
+}
+$('b-sum').addEventListener('click', function(){ openSummary(S.placed.length === N); });
+$('b-pskip').addEventListener('click', function(){
+  closePanel(); renderPool();
+  toast('พักข้อนี้ไว้ก่อน เลือกข้ออื่นได้เลย เดี๋ยวกลับมาทำต่อได้', '');
+});
+$('c-ok').addEventListener('click', checkCalc);
+$('c-skip').addEventListener('click', skipCalc);
+$('c-val').addEventListener('keydown', function(e){ if(e.key === 'Enter') checkCalc(); });
+var ceq = $('c-eq');
+if(ceq) ceq.addEventListener('keydown', function(e){ if(e.key === 'Enter') $('c-val').focus(); });
+$('m-calc').addEventListener('click', function(e){ if(e.target === this) skipCalc(); });
+$('m-sum').addEventListener('click', function(e){ if(e.target === this) closeMask('m-sum'); });
+
+$('st-ok').addEventListener('click', function(){
+  S.seat1 = ($('st-1').value || '').replace(/[^0-9]/g, '').slice(0, 3);
+  S.seat2 = ($('st-2').value || '').replace(/[^0-9]/g, '').slice(0, 3);
+  save(); closeMask('m-start');
+  if(groupId()) toast('กลุ่มเลขที่ ' + groupId() + ' พร้อมแล้ว ขอให้สนุกนะ', 'ok');
+});
+$('st-skip').addEventListener('click', function(){ closeMask('m-start'); });
+
+/* ปุ่มเปิด-ปิดคำอธิบายสัญลักษณ์ — ตัวเลขในคำอธิบายไม่ตรงกับคำตอบข้อใดในเกม */
+(function(){
+  var b = document.getElementById('c-symhelp'), box = document.getElementById('c-symhelp-box');
+  if(!b || !box) return;
+  b.addEventListener('click', function(){
+    var on = box.classList.toggle('on');
+    b.textContent = on ? 'ซ่อนคำอธิบายสัญลักษณ์' : 'ปุ่มพวกนี้หมายถึงอะไร?';
+  });
+})();
+
+/* แถบปุ่มสัญลักษณ์ — ช่วยนักเรียนที่ใช้ iPad/มือถือ ไม่ต้องสลับคีย์บอร์ดหา ! ( ) , */
+(function(){
+  var bar = document.getElementById('c-sym'); if(!bar) return;
+  bar.addEventListener('click', function(e){
+    var b = e.target; while(b && b !== bar && !b.getAttribute('data-s')) b = b.parentNode;
+    if(!b || b === bar) return;
+    var inp = document.getElementById('c-eq'); if(!inp) return;
+    var s = b.getAttribute('data-s');
+    var a = (inp.selectionStart == null) ? inp.value.length : inp.selectionStart;
+    var z = (inp.selectionEnd   == null) ? inp.value.length : inp.selectionEnd;
+    inp.value = inp.value.slice(0, a) + s + inp.value.slice(z);
+    var p = a + s.length;
+    inp.focus(); try { inp.setSelectionRange(p, p); } catch(err){}
+  });
+})();
+
+(function(){
+  var restored = loadState();
+  init(false);
+  if(!groupId()){
+    $('st-1').value = S.seat1 || ''; $('st-2').value = S.seat2 || '';
+    setTimeout(function(){ openMask('m-start'); }, 300);
+  }
+  if(restored && (restored.placed.length || restored.reason.length || restored.pts)){
+    setTimeout(function(){ toast('โหลดความก้าวหน้าเดิมแล้ว — ทำต่อได้เลย (คะแนน ' + S.pts + ')', 'ok'); }, 500);
+  }
+})();
+</script>
+</body>
+</html>

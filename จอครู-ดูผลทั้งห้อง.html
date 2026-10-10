@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>จอครู — ผลการเล่นทั้งห้อง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b1220;--panel:#151f33;--panel2:#1b2740;--line:#2a3852;--txt:#e8eefb;
+      --mut:#93a4bf;--a1:#38bdf8;--a2:#a855f7;--ok:#34d399;--bad:#f87171;--gold:#fbbf24}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;line-height:1.55;
+  background-image:radial-gradient(900px 520px at 10% -8%,var(--a1),transparent 60%),
+                   radial-gradient(760px 440px at 108% 0%,var(--a2),transparent 58%);
+  background-attachment:fixed}
+body::before{content:'';position:fixed;inset:0;background:rgba(11,18,32,.84);z-index:-1}
+.wrap{max-width:1500px;margin:0 auto;padding:18px 20px 60px}
+h1{font-family:'Space Grotesk','Sarabun',sans-serif;font-size:clamp(21px,2.6vw,32px);
+  background:linear-gradient(120deg,var(--a1),var(--a2));-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;margin-bottom:4px}
+.sub{color:var(--mut);font-size:14px;margin-bottom:16px}
+
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;background:var(--panel);
+  border:1px solid var(--line);border-radius:15px;padding:13px 15px;margin-bottom:16px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:11px;color:var(--mut);font-weight:600}
+.fld input,.fld select{background:var(--panel2);border:1px solid #44546f;color:var(--txt);border-radius:10px;
+  padding:9px 11px;font-family:'Sarabun',sans-serif;font-size:14px;min-height:42px;outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--a1)}
+button{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border:0;border-radius:11px;
+  padding:11px 18px;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:700;cursor:pointer;min-height:42px}
+button.ghost{background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--mut)}
+button:active{transform:scale(.97)}
+.status{margin-left:auto;font-size:12.5px;color:var(--mut);align-self:center;text-align:right}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:14px 16px}
+.kpi .k{font-size:11.5px;color:#6b7c99;text-transform:uppercase;letter-spacing:.7px}
+.kpi .v{font-family:'Space Grotesk',sans-serif;font-size:clamp(26px,3.4vw,38px);font-weight:700;line-height:1.15}
+
+.grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:16px 18px;margin-bottom:16px}
+.card h2{font-size:15.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 small{font-size:12px;color:var(--mut);font-weight:400}
+
+.mrow{margin-bottom:12px}
+.mtop{display:flex;justify-content:space-between;gap:12px;font-size:14px;margin-bottom:5px}
+.mtop .qn{color:var(--bad);font-weight:700;white-space:nowrap}
+.mtop .qt{flex:1;color:#cfdaec}
+.mtop .qc{color:var(--mut);font-size:12.5px;white-space:nowrap}
+.mbar{height:12px;background:rgba(255,255,255,.06);border-radius:8px;overflow:hidden}
+.mbar>i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#f87171,#fbbf24);transition:width .6s}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:9px 8px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+th{font-size:11.5px;color:#6b7c99;text-transform:uppercase;letter-spacing:.6px;position:sticky;top:0;background:var(--panel)}
+td.num{font-family:'Space Grotesk',sans-serif;font-weight:700;white-space:nowrap}
+.tblwrap{max-height:560px;overflow:auto}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.lv-vg{background:rgba(52,211,153,.17);color:#6ee7b7}
+.lv-g{background:rgba(56,189,248,.17);color:#7dd3fc}
+.lv-ok{background:rgba(251,191,36,.17);color:#fcd34d}
+.lv-bad{background:rgba(248,113,113,.17);color:#fca5a5}
+.prog{height:7px;background:rgba(255,255,255,.07);border-radius:7px;overflow:hidden;margin-top:5px;min-width:70px}
+.prog>i{display:block;height:100%;background:linear-gradient(90deg,var(--a1),var(--a2))}
+.empty{text-align:center;color:var(--mut);padding:34px 14px;font-size:14px;line-height:1.8}
+.warn{background:rgba(251,191,36,.1);border:1px dashed var(--gold);border-radius:13px;padding:13px 15px;
+  font-size:13px;color:#fcd9a4;margin-bottom:16px;line-height:1.65}
+code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 6px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>จอครู — ผลการเล่นทั้งห้อง</h1>
+  <div class="sub">อัปเดตอัตโนมัติจากเครื่องนักเรียน · นักเรียนจับคู่กันเล่น กลุ่มละ 2 เลขที่</div>
+
+  <div id="setup" class="warn" style="display:none">
+    <b>ยังไม่ได้ตั้งค่า Firebase</b> — เปิดไฟล์นี้ด้วย Text Editor แล้วเติม <code>projectId</code> กับ <code>apiKey</code>
+    ในบล็อก <code>var FB</code> ด้านล่างสุดของไฟล์ (ต้องใส่ค่าเดียวกันกับไฟล์เกมทั้ง 8 คาบ)<br>
+    ระหว่างนี้กดปุ่ม <b>“ดูตัวอย่างหน้าจอ”</b> เพื่อดูว่าหน้านี้จะแสดงผลอย่างไรได้เลย
+  </div>
+
+  <div class="bar">
+    <div class="fld"><label>รหัสห้อง</label><input id="room" type="text" style="width:130px"></div>
+    <div class="fld"><label>คาบ</label>
+      <select id="cls">
+        <option value="">ทุกคาบ</option>
+        <option value="1">คาบ 1</option><option value="2">คาบ 2</option>
+        <option value="3">คาบ 3</option><option value="4">คาบ 4</option>
+        <option value="5">คาบ 5</option><option value="6">คาบ 6</option>
+        <option value="7">คาบ 7</option><option value="8">คาบ 8</option>
+      </select>
+    </div>
+    <button id="reload">ดึงข้อมูล</button>
+    <button id="demo" class="ghost">ดูตัวอย่างหน้าจอ</button>
+    <button id="csv" class="ghost">ดาวน์โหลดทั้งห้องเป็น CSV</button>
+    <div class="status" id="status">—</div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>ข้อที่ทั้งห้องทำผิดมากที่สุด <small>เรียงจากมากไปน้อย</small></h2>
+        <div id="missbox"><div class="empty">ยังไม่มีข้อมูล</div></div>
+      </div>
+      <div class="card">
+        <h2>จุดที่ทั้งห้องสับสนบ่อย <small>วางผิดช่องแบบไหนมากที่สุด</small></h2>
+        <div id="confbox"><div class="empty">ยังไม่มีข้อมูล</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>รายกลุ่ม <small id="gcount"></small></h2>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>กลุ่ม (เลขที่)</th><th>คาบ</th><th>คะแนน</th><th>ระดับ</th><th>ความคืบหน้า</th><th>ข้อที่ผิดมากสุด</th></tr></thead>
+          <tbody id="tbody"><tr><td colspan="6"><div class="empty">ยังไม่มีข้อมูล</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="fb-config.js"></script>
+<script>
+/* ============================================================
+   ตั้งค่า Firebase — ใส่ค่าเดียวกับที่ใส่ในไฟล์เกมทั้ง 8 คาบ
+   ============================================================ */
+var FB = {
+  projectId: '',       /* ← Project ID จาก Firebase */
+  apiKey:    '',       /* ← Web API Key จาก Firebase */
+  room:      'room1'   /* ← รหัสห้อง ต้องตรงกับในเกม */
+};
+
+/* ถ้ามีไฟล์ fb-config.js วางอยู่ข้างๆ จะใช้ค่าจากไฟล์นั้นแทน
+   (แก้ที่เดียว มีผลทุกคาบ — ไม่มีไฟล์นี้ก็ใช้ค่าด้านบนได้ตามปกติ) */
+if (window.FB_CONFIG) {
+  FB.projectId = FB_CONFIG.projectId || FB.projectId;
+  FB.apiKey    = FB_CONFIG.apiKey    || FB.apiKey;
+  FB.room      = FB_CONFIG.room      || FB.room;
+}
+
+var rows = [], demoMode = false, timer = null;
+var $ = function(i){ return document.getElementById(i); };
+function fbOn(){ return !!(FB.projectId && FB.apiKey); }
+function hm(){ var d = new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
+
+/* ---------- แปลงค่าจาก Firestore ---------- */
+function deVal(v){
+  if(!v || typeof v !== 'object') return v;
+  if('integerValue' in v) return parseInt(v.integerValue, 10);
+  if('doubleValue' in v) return Number(v.doubleValue);
+  if('booleanValue' in v) return v.booleanValue;
+  if('stringValue' in v) return v.stringValue;
+  if('arrayValue' in v) return (v.arrayValue.values || []).map(deVal);
+  if('mapValue' in v){
+    var o = {}, f = v.mapValue.fields || {};
+    for(var k in f) o[k] = deVal(f[k]);
+    return o;
+  }
+  return '';
+}
+function deDoc(d){
+  var o = {}, f = d.fields || {};
+  for(var k in f) o[k] = deVal(f[k]);
+  return o;
+}
+
+/* ---------- ดึงข้อมูล ----------
+   เลือกคาบไว้ = ดึงเฉพาะคาบนั้น (อ่าน ~20 เอกสาร) ประหยัดโควตาฟรีมาก
+   เลือก "ทุกคาบ" = ดึงทั้งหมด ใช้เฉพาะตอนสรุปท้ายคาบ ไม่รีเฟรชอัตโนมัติ  */
+var reads = 0;
+function load(){
+  if(!fbOn()){ $('status').textContent = 'ยังไม่ได้ตั้งค่า Firebase'; return; }
+  var cls = $('cls').value;
+  $('status').textContent = 'กำลังดึงข้อมูล…';
+  var base = 'https://firestore.googleapis.com/v1/projects/' + FB.projectId + '/databases/(default)/documents';
+  var req;
+  if(cls){
+    req = fetch(base + ':runQuery?key=' + encodeURIComponent(FB.apiKey), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: {
+        from: [{ collectionId: 'results' }],
+        where: { fieldFilter: { field: { fieldPath: 'cls' }, op: 'EQUAL', value: { stringValue: String(cls) } } },
+        limit: 300
+      }})
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0,140)); });
+      return r.json();
+    }).then(function(a){
+      return (a || []).filter(function(x){ return x.document; }).map(function(x){ return deDoc(x.document); });
+    });
+  } else {
+    req = fetch(base + '/results?pageSize=300&key=' + encodeURIComponent(FB.apiKey))
+      .then(function(r){
+        if(!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0,140)); });
+        return r.json();
+      })
+      .then(function(j){ return (j.documents || []).map(deDoc); });
+  }
+  req.then(function(list){
+    demoMode = false; rows = list; reads += list.length;
+    $('status').textContent = 'อัปเดต ' + hm() + ' · ' + rows.length + ' กลุ่ม' +
+      (cls ? ' (คาบ ' + cls + ')' : ' (ทุกคาบ — ไม่รีเฟรชอัตโนมัติ)') +
+      ' · อ่านสะสม ' + reads;
+    render();
+  }).catch(function(e){
+    $('status').textContent = 'ดึงข้อมูลไม่ได้: ' + String(e.message || e).slice(0, 90);
+  });
+}
+function autoRefresh(){
+  if(timer){ clearInterval(timer); timer = null; }
+  if(fbOn() && $('cls').value) timer = setInterval(load, 20000);   /* รีเฟรชทุก 20 วิ เฉพาะตอนเลือกคาบไว้ */
+}
+
+/* ---------- ข้อมูลตัวอย่างไว้ดูหน้าจอก่อนต่อ Firebase ---------- */
+function makeDemo(){
+  var texts = {
+    3:'🃏 สุ่มหยิบไพ่ 1 ใบจากสำรับ (52 ใบ) ให้ได้ "ไพ่สีแดง" หรือ "ไพ่คิง (K)"',
+    5:'🔢 สุ่มเลข 1-100 จำนวน 1 ใบ ให้ได้เลขที่ "หาร 2 ลงตัว" หรือ "หาร 3 ลงตัว"',
+    7:'🚗 เดินทางจาก A ไป C โดยต้องผ่าน B (AไปB มี 3 ทาง, BไปC มี 4 ทาง)',
+    9:'🔮 สุ่มหยิบลูกบอล 1 ลูกจากเลข 1-20 ให้ได้ "เลขคู่" หรือ "เลขที่หาร 5 ลงตัว"',
+    1:'👕 แต่งตัวออกจากบ้าน โดยมีเสื้อ 3 ตัว และกางเกง 2 ตัว'
+  };
+  var out = [], seat = 1;
+  for(var g = 0; g < 20; g++){
+    var miss = {}, titles = {}, tot = 0;
+    [3,5,7,9,1].forEach(function(qid, i){
+      if(Math.random() < [0.8,0.6,0.75,0.4,0.25][i]){
+        var n = 1 + Math.floor(Math.random() * 3);
+        miss[qid] = n; titles[qid] = texts[qid]; tot += n;
+      }
+    });
+    var pct = Math.max(25, Math.min(100, Math.round(95 - tot * 6 + (Math.random()*14-7))));
+    var pts = Math.round(380 * pct / 100);
+    out.push({
+      room: FB.room, cls: '2', group: seat + '-' + (seat+1), g1: String(seat), g2: String(seat+1),
+      pts: pts, max: 380, pct: pct,
+      level: pct >= 80 ? 'ดีมาก' : pct >= 60 ? 'ดี' : pct >= 40 ? 'พอใช้' : 'ต้องปรับปรุง',
+      placed: Math.min(10, 6 + Math.floor(Math.random()*5)), n: 10,
+      miss: miss, titles: titles,
+      conf: Math.random() < 0.6 ? ['มีส่วน ร่วมกัน → เลือก ทางเดียว|' + (1 + Math.floor(Math.random()*2))] : [],
+      ts: new Date().toISOString()
+    });
+    seat += 2;
+  }
+  return out;
+}
+
+/* ---------- แสดงผล ---------- */
+function noEmoji(s){
+  return String(s == null ? '' : s)
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu, '')
+    .replace(/\s{2,}/g, ' ').trim();
+}
+function lvClass(l){
+  return l === 'ดีมาก' ? 'lv-vg' : l === 'ดี' ? 'lv-g' : l === 'พอใช้' ? 'lv-ok' : 'lv-bad';
+}
+function filtered(){
+  var c = $('cls').value, r = $('room').value.trim();
+  return rows.filter(function(x){
+    return (!c || String(x.cls) === c) && (!r || String(x.room) === r || demoMode);
+  });
+}
+function render(){
+  var data = filtered();
+  $('gcount').textContent = data.length + ' กลุ่ม';
+
+  /* --- KPI --- */
+  var done = data.filter(function(x){ return x.placed >= x.n; }).length;
+  var avg = data.length ? Math.round(data.reduce(function(s,x){ return s + (x.pct||0); }, 0) / data.length) : 0;
+  var lv = { 'ดีมาก':0, 'ดี':0, 'พอใช้':0, 'ต้องปรับปรุง':0 };
+  data.forEach(function(x){ if(lv[x.level] !== undefined) lv[x.level]++; });
+  $('kpis').innerHTML =
+    kpi('กลุ่มที่ส่งผลแล้ว', data.length, 'var(--a1)') +
+    kpi('เล่นครบทุกข้อ', done + '/' + data.length, 'var(--ok)') +
+    kpi('คะแนนเฉลี่ย', avg + '%', 'var(--gold)') +
+    kpi('ดีมาก / ดี', lv['ดีมาก'] + ' / ' + lv['ดี'], '#7dd3fc') +
+    kpi('พอใช้ / ปรับปรุง', lv['พอใช้'] + ' / ' + lv['ต้องปรับปรุง'], 'var(--bad)');
+
+  /* --- ข้อที่ผิดมากที่สุด --- */
+  var agg = {};
+  data.forEach(function(x){
+    var m = x.miss || {}, t = x.titles || {};
+    for(var qid in m){
+      if(!agg[qid]) agg[qid] = { qid: qid, n: 0, groups: 0, text: t[qid] || ('ข้อ ' + qid) };
+      agg[qid].n += m[qid];
+      agg[qid].groups++;
+      if(t[qid]) agg[qid].text = t[qid];
+    }
+  });
+  var list = Object.keys(agg).map(function(k){ return agg[k]; })
+              .sort(function(a,b){ return b.n - a.n || b.groups - a.groups; });
+  var top = list[0] ? list[0].n : 1;
+  $('missbox').innerHTML = list.length ? list.slice(0, 10).map(function(x){
+    return '<div class="mrow"><div class="mtop">' +
+      '<span class="qn">ข้อ ' + x.qid + '</span>' +
+      '<span class="qt">' + noEmoji(x.text) + '</span>' +
+      '<span class="qc">ผิด ' + x.n + ' ครั้ง · ' + x.groups + ' กลุ่ม</span></div>' +
+      '<div class="mbar"><i style="width:' + Math.round(x.n / top * 100) + '%"></i></div></div>';
+  }).join('') : '<div class="empty">ยังไม่มีข้อมูล</div>';
+
+  /* --- จุดสับสน --- */
+  var cf = {};
+  data.forEach(function(x){
+    (x.conf || []).forEach(function(s){
+      var p = String(s).split('|');
+      if(p.length === 2) cf[p[0]] = (cf[p[0]] || 0) + (parseInt(p[1], 10) || 0);
+    });
+  });
+  var ck = Object.keys(cf).sort(function(a,b){ return cf[b] - cf[a]; });
+  var cmax = ck.length ? cf[ck[0]] : 1;
+  $('confbox').innerHTML = ck.length ? ck.slice(0, 8).map(function(k){
+    return '<div class="mrow"><div class="mtop"><span class="qt">' + noEmoji(k) +
+      '</span><span class="qc">' + cf[k] + ' ครั้ง</span></div>' +
+      '<div class="mbar"><i style="width:' + Math.round(cf[k] / cmax * 100) + '%;background:linear-gradient(90deg,#a855f7,#38bdf8)"></i></div></div>';
+  }).join('') : '<div class="empty">ยังไม่มีการวางผิดช่อง</div>';
+
+  /* --- ตารางกลุ่ม --- */
+  data.sort(function(a,b){ return (b.pct||0) - (a.pct||0); });
+  $('tbody').innerHTML = data.length ? data.map(function(x){
+    var m = x.miss || {}, t = x.titles || {}, best = '', bn = 0;
+    for(var q in m){ if(m[q] > bn){ bn = m[q]; best = 'ข้อ ' + q; } }
+    var prog = Math.round((x.placed || 0) / (x.n || 1) * 100);
+    return '<tr>' +
+      '<td class="num">' + (x.group || '-') + '</td>' +
+      '<td>' + (x.cls || '-') + '</td>' +
+      '<td class="num">' + (x.pts||0) + '/' + (x.max||0) + '<br><span style="color:var(--mut);font-size:12px">' + (x.pct||0) + '%</span></td>' +
+      '<td><span class="pill ' + lvClass(x.level) + '">' + (x.level || '-') + '</span></td>' +
+      '<td>' + (x.placed||0) + '/' + (x.n||0) + '<div class="prog"><i style="width:' + prog + '%"></i></div></td>' +
+      '<td>' + (best ? best + ' <span style="color:var(--mut)">(' + bn + ' ครั้ง)</span>' : '—') + '</td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="6"><div class="empty">ยังไม่มีกลุ่มไหนส่งผล<br>ให้นักเรียนใส่เลขที่ในเกมแล้วเริ่มเล่นได้เลย</div></td></tr>';
+}
+function kpi(k, v, c){
+  return '<div class="kpi"><div class="k">' + k + '</div><div class="v" style="color:' + c + '">' + v + '</div></div>';
+}
+
+/* ---------- ดาวน์โหลดทั้งห้อง ---------- */
+function csvAll(){
+  var data = filtered();
+  if(!data.length){ alert('ยังไม่มีข้อมูลให้ดาวน์โหลด'); return; }
+  var head = ['กลุ่ม','เลขที่1','เลขที่2','คาบ','คะแนน','เต็ม','ร้อยละ','ระดับ','ทำได้','ทั้งหมด',
+              'เหตุผลถูกครั้งแรก','วางถูกครั้งแรก','คิดเลขสำเร็จ','ผิดเหตุผล','ผิดช่อง','ผิดคำนวณ',
+              'ใช้คำใบ้','ต่อเนื่องสูงสุด','ข้อที่ผิด','เวลาอัปเดต'];
+  var lines = [head.join(',')];
+  data.forEach(function(x){
+    var m = x.miss || {}, mm = Object.keys(m).map(function(q){ return 'ข้อ' + q + '=' + m[q]; }).join(' ');
+    var row = [x.group, x.g1, x.g2, x.cls, x.pts, x.max, x.pct, x.level, x.placed, x.n,
+               x.rFirst, x.pFirst, x.calcDone, x.rW, x.pW, x.cW, x.hints, x.best, mm, x.ts];
+    lines.push(row.map(function(v){
+      v = String(v === undefined ? '' : v);
+      return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+    }).join(','));
+  });
+  var blob = new Blob(['﻿' + lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ผลทั้งห้อง_' + ($('cls').value ? 'คาบ' + $('cls').value : 'ทุกคาบ') + '.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1200);
+}
+
+/* ---------- เริ่มทำงาน ---------- */
+$('room').value = FB.room;
+$('setup').style.display = fbOn() ? 'none' : 'block';
+$('reload').addEventListener('click', load);
+$('csv').addEventListener('click', csvAll);
+$('cls').addEventListener('change', function(){
+  render();
+  if(fbOn() && !demoMode){ load(); autoRefresh(); }
+});
+$('room').addEventListener('input', render);
+$('demo').addEventListener('click', function(){
+  demoMode = true; rows = makeDemo();
+  $('status').textContent = 'กำลังแสดงข้อมูลตัวอย่าง (ไม่ใช่ข้อมูลจริง)';
+  render();
+});
+if(fbOn()){
+  load();
+  autoRefresh();
+} else {
+  $('status').textContent = 'ยังไม่ได้ตั้งค่า Firebase — กด “ดูตัวอย่างหน้าจอ” ได้';
+}
+</script>
+</body>
+</html>
