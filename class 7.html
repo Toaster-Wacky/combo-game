@@ -291,13 +291,13 @@ body::before{content:'';position:fixed;inset:0;background:rgba(11,18,32,.80);z-i
 <div class="mask" id="m-start">
   <div class="sheet">
     <h3>👋 ก่อนเริ่มเล่น</h3>
-    <div class="m-guide">ใส่ <b>เลขที่ของทั้งคู่</b> เพื่อให้ครูเห็นผลงานของกลุ่มบนจอหน้าห้อง<br>
-      <span style="font-size:12px;color:var(--mut)">ถ้ายังไม่พร้อม กด "ข้ามไปก่อน" แล้วมาใส่ทีหลังในหน้าสรุปได้</span></div>
+    <div class="m-guide">ใส่ <b>รหัสของทั้งคู่</b> ที่ครูแจกให้ เพื่อให้ครูเห็นผลงานของกลุ่มบนจอหน้าห้อง<br>
+      <span style="font-size:12px;color:var(--mut)">ไม่ต้องใส่ชื่อหรือเลขที่จริงของตัวเอง · ถ้ายังไม่พร้อม กด "ข้ามไปก่อน" แล้วมาใส่ทีหลังในหน้าสรุปได้</span></div>
     <div class="field">
       <div style="display:flex;gap:10px">
-        <div style="flex:1"><label>เลขที่คนที่ 1</label>
+        <div style="flex:1"><label>รหัสคนที่ 1</label>
           <input class="inp" id="st-1" type="text" inputmode="numeric" placeholder="เช่น 12"></div>
-        <div style="flex:1"><label>เลขที่คนที่ 2</label>
+        <div style="flex:1"><label>รหัสคนที่ 2</label>
           <input class="inp" id="st-2" type="text" inputmode="numeric" placeholder="เช่น 13"></div>
       </div>
     </div>
@@ -395,6 +395,8 @@ function nowHM(){
   var d = new Date();
   return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
 }
+/* รหัสของแต่ละคู่ — ครูเป็นผู้กำหนดและแจกให้ ไม่ใช่เลขที่จริงของนักเรียน
+   ช่องกรอกรับเฉพาะตัวเลข จึงพิมพ์ชื่อลงไปไม่ได้ */
 function groupId(){
   var a = (S && S.seat1) || '', b = (S && S.seat2) || '';
   if(a && b) return a + '-' + b;
@@ -435,10 +437,15 @@ function fbStatus(msg){
 }
 function fbSend(manual){
   if(!fbOn()){ if(manual) toast('ยังไม่ได้ตั้งค่า Firebase ในไฟล์นี้', 'bad'); return; }
-  if(!groupId()){ if(manual) toast('ใส่เลขที่ของทั้งคู่ก่อนส่งผลนะ', 'bad'); return; }
-  var docId = (FB.room + '_' + CONFIG.id + '_' + groupId()).replace(/[^A-Za-z0-9ก-๙_\-]/g, '-');
+  if(!groupId()){ if(manual) toast('ใส่รหัสของทั้งคู่ก่อนส่งผลนะ', 'bad'); return; }
+  /* เก็บข้อมูลไว้ใต้เส้นทางที่มีรหัสห้องอยู่ด้วย: rooms/<รหัสห้อง>/results/<เอกสาร>
+     กฎความปลอดภัยอนุญาตให้อ่านได้เฉพาะเมื่อระบุรหัสห้องถูกต้อง
+     คนที่ไม่รู้รหัสห้องจึงดึงข้อมูลออกไปไม่ได้ แม้จะมี apiKey ก็ตาม */
+  var roomSeg = String(FB.room).replace(/[^A-Za-z0-9_\-]/g, '-');
+  var docId = (CONFIG.id + '_' + groupId()).replace(/[^A-Za-z0-9ก-๙_\-]/g, '-');
   var url = 'https://firestore.googleapis.com/v1/projects/' + FB.projectId +
-            '/databases/(default)/documents/results/' + encodeURIComponent(docId) +
+            '/databases/(default)/documents/rooms/' + encodeURIComponent(roomSeg) +
+            '/results/' + encodeURIComponent(docId) +
             '?key=' + encodeURIComponent(FB.apiKey);
   var pl = fbPayload(), body = { fields: {} };
   for(var k in pl) body.fields[k] = fbVal(pl[k]);
@@ -1145,7 +1152,7 @@ function buildReportText(){
   var top = missList().slice(0, 5).map(function(x){ return 'ข้อ ' + x.q.id + ' (' + x.total + ' ครั้ง)'; }).join(', ') || 'ไม่มี';
   var conf = confusionList().slice(0, 3).map(function(x){ return zName(x.from) + ' → ' + zName(x.to) + ' ' + x.n + ' ครั้ง'; }).join(', ') || 'ไม่มี';
   var L = [];
-  L.push('คาบ ' + CONFIG.id.replace('c','') + ' | เลขที่ ' + (groupId() || '-') + ' | ' +
+  L.push('คาบ ' + CONFIG.id.replace('c','') + ' | รหัสกลุ่ม ' + (groupId() || '-') + ' | ' +
          S.pts + '/' + MAX_PTS + ' (' + st.pct + '%) ระดับ ' + levelOf(st.pct));
   L.push('จัดโซนสำเร็จ ' + S.placed.length + '/' + N +
          ' · เหตุผลถูกครั้งแรก ' + st.rFirst + '/' + S.reason.length +
@@ -1162,7 +1169,7 @@ function buildCSV(){
   var st = reportStats();
   var top = missList().slice(0, 5).map(function(x){ return 'ข้อ' + x.q.id + '=' + x.total; }).join(' ') || '-';
   var conf = confusionList().slice(0, 3).map(function(x){ return zName(x.from) + '>' + zName(x.to) + '=' + x.n; }).join(' ') || '-';
-  var head = ['เลขที่','คาบ','คะแนน','คะแนนเต็ม','ร้อยละ','ระดับ','จัดโซนสำเร็จ',
+  var head = ['รหัสกลุ่ม','คาบ','คะแนน','คะแนนเต็ม','ร้อยละ','ระดับ','จัดโซนสำเร็จ',
               'เหตุผลถูกครั้งแรก','วางถูกครั้งแรก','คิดเลขสำเร็จ','คิดเลขถูกครั้งแรก',
               'ผิดเหตุผลรวม','ผิดช่องรวม','ผิดคำนวณรวม','ใช้คำใบ้','ต่อเนื่องสูงสุด',
               'ข้อที่ทำผิดมากที่สุด','สับสนบ่อย'];
@@ -1179,7 +1186,7 @@ function downloadCSV(){
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'ผลคาบ' + CONFIG.id.replace('c','') + '_เลขที่' + (groupId() || 'ไม่ระบุ') + '.csv';
+    a.download = 'ผลคาบ' + CONFIG.id.replace('c','') + '_รหัส' + (groupId() || 'ไม่ระบุ') + '.csv';
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1200);
     toast('บันทึกไฟล์แล้ว เปิดดูได้ในแอปไฟล์/โฟลเดอร์ดาวน์โหลด', 'ok');
@@ -1277,7 +1284,7 @@ function openSummary(finished){
     '<div class="qlist">' + rows + '</div>' +
     '<div style="' + lab + '">ส่งผลให้ครู</div>' +
     '<div class="field" style="margin-bottom:9px">' +
-      '<label>เลขที่ของทั้งคู่</label>' +
+      '<label>รหัสของทั้งคู่ (ครูเป็นผู้แจกให้)</label>' +
       '<div style="display:flex;gap:10px">' +
         '<input class="inp" id="sum-s1" type="text" inputmode="numeric" placeholder="คนที่ 1" value="' + (S.seat1 || '') + '">' +
         '<input class="inp" id="sum-s2" type="text" inputmode="numeric" placeholder="คนที่ 2" value="' + (S.seat2 || '') + '">' +
@@ -1382,7 +1389,7 @@ $('st-ok').addEventListener('click', function(){
   S.seat1 = ($('st-1').value || '').replace(/[^0-9]/g, '').slice(0, 3);
   S.seat2 = ($('st-2').value || '').replace(/[^0-9]/g, '').slice(0, 3);
   save(); closeMask('m-start');
-  if(groupId()) toast('กลุ่มเลขที่ ' + groupId() + ' พร้อมแล้ว ขอให้สนุกนะ', 'ok');
+  if(groupId()) toast('กลุ่มรหัส ' + groupId() + ' พร้อมแล้ว ขอให้สนุกนะ', 'ok');
 });
 $('st-skip').addEventListener('click', function(){ closeMask('m-start'); });
 

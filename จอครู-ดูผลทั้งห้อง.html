@@ -33,6 +33,10 @@ button{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border:
   padding:11px 18px;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:700;cursor:pointer;min-height:42px}
 button.ghost{background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--mut)}
 button:active{transform:scale(.97)}
+button.warn{background:rgba(244,63,94,.14);border:1px solid rgba(244,63,94,.55);color:#fda4af}
+.cutinfo{display:none;align-self:center;font-size:12px;padding:6px 12px;border-radius:999px;
+  background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.45);color:#fcd34d}
+.cutinfo.on{display:block}
 .status{margin-left:auto;font-size:12.5px;color:var(--mut);align-self:center;text-align:right}
 
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
@@ -75,7 +79,7 @@ code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 6px;font-siz
 <body>
 <div class="wrap">
   <h1>จอครู — ผลการเล่นทั้งห้อง</h1>
-  <div class="sub">อัปเดตอัตโนมัติจากเครื่องนักเรียน · นักเรียนจับคู่กันเล่น กลุ่มละ 2 เลขที่</div>
+  <div class="sub">อัปเดตอัตโนมัติจากเครื่องนักเรียน · นักเรียนจับคู่กันเล่น กลุ่มละ 2 รหัสที่ครูแจกให้</div>
 
   <div id="setup" class="warn" style="display:none">
     <b>ยังไม่ได้ตั้งค่า Firebase</b> — เปิดไฟล์นี้ด้วย Text Editor แล้วเติม <code>projectId</code> กับ <code>apiKey</code>
@@ -96,7 +100,10 @@ code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 6px;font-siz
     </div>
     <button id="reload">ดึงข้อมูล</button>
     <button id="demo" class="ghost">ดูตัวอย่างหน้าจอ</button>
+    <button id="reset" class="warn">เริ่มคาบใหม่</button>
+    <button id="showall" class="ghost" style="display:none">แสดงผลเก่าทั้งหมด</button>
     <button id="csv" class="ghost">ดาวน์โหลดทั้งห้องเป็น CSV</button>
+    <div class="cutinfo" id="cutinfo"></div>
     <div class="status" id="status">—</div>
   </div>
 
@@ -117,7 +124,7 @@ code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 6px;font-siz
       <h2>รายกลุ่ม <small id="gcount"></small></h2>
       <div class="tblwrap">
         <table>
-          <thead><tr><th>กลุ่ม (เลขที่)</th><th>คาบ</th><th>คะแนน</th><th>ระดับ</th><th>ความคืบหน้า</th><th>ข้อที่ผิดมากสุด</th></tr></thead>
+          <thead><tr><th>รหัสกลุ่ม</th><th>คาบ</th><th>คะแนน</th><th>ระดับ</th><th>ความคืบหน้า</th><th>ข้อที่ผิดมากสุด</th></tr></thead>
           <tbody id="tbody"><tr><td colspan="6"><div class="empty">ยังไม่มีข้อมูล</div></td></tr></tbody>
         </table>
       </div>
@@ -177,8 +184,13 @@ var reads = 0;
 function load(){
   if(!fbOn()){ $('status').textContent = 'ยังไม่ได้ตั้งค่า Firebase'; return; }
   var cls = $('cls').value;
+  var room = ($('room').value || '').trim() || FB.room;
+  if(!room){ $('status').textContent = 'ใส่รหัสห้องก่อนจึงจะดึงข้อมูลได้'; return; }
   $('status').textContent = 'กำลังดึงข้อมูล…';
-  var base = 'https://firestore.googleapis.com/v1/projects/' + FB.projectId + '/databases/(default)/documents';
+  /* ข้อมูลเก็บอยู่ใต้ rooms/<รหัสห้อง>/results — ต้องรู้รหัสห้องจึงจะอ่านได้ */
+  var roomSeg = encodeURIComponent(String(room).replace(/[^A-Za-z0-9_\-]/g, '-'));
+  var base = 'https://firestore.googleapis.com/v1/projects/' + FB.projectId +
+             '/databases/(default)/documents/rooms/' + roomSeg;
   var req;
   if(cls){
     req = fetch(base + ':runQuery?key=' + encodeURIComponent(FB.apiKey), {
@@ -205,7 +217,8 @@ function load(){
   }
   req.then(function(list){
     demoMode = false; rows = list; reads += list.length;
-    $('status').textContent = 'อัปเดต ' + hm() + ' · ' + rows.length + ' กลุ่ม' +
+    render();   /* เรนเดอร์ก่อน เพื่อให้ตัวเลขในแถบสถานะตรงกับจำนวนกลุ่มที่แสดงจริง */
+    $('status').textContent = 'อัปเดต ' + hm() + ' · ' + filtered().length + ' กลุ่ม' +
       (cls ? ' (คาบ ' + cls + ')' : ' (ทุกคาบ — ไม่รีเฟรชอัตโนมัติ)') +
       ' · อ่านสะสม ' + reads;
     render();
@@ -261,10 +274,37 @@ function noEmoji(s){
 function lvClass(l){
   return l === 'ดีมาก' ? 'lv-vg' : l === 'ดี' ? 'lv-g' : l === 'พอใช้' ? 'lv-ok' : 'lv-bad';
 }
+/* ---------- เริ่มคาบใหม่ ----------
+   เก็บ "เวลาเริ่มคาบ" ไว้ในเครื่องของครู แล้วซ่อนผลที่ส่งมาก่อนเวลานั้น
+   ไม่ได้ลบข้อมูลใน Firebase (กฎความปลอดภัยห้ามลบอยู่แล้ว) กดดูย้อนหลังได้ตลอด
+   กลุ่มที่ยังเล่นอยู่จะเด้งกลับขึ้นจอเองทันทีที่ส่งผลครั้งถัดไป */
+var CUTKEY = 'combi-teacher-cutoff';
+function getCut(){ try { return localStorage.getItem(CUTKEY) || ''; } catch(e){ return ''; } }
+function setCut(v){
+  try { if(v) localStorage.setItem(CUTKEY, v); else localStorage.removeItem(CUTKEY); } catch(e){}
+}
+function cutLabel(iso){
+  var d = new Date(iso);
+  if(isNaN(d)) return '';
+  return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2) + ' น.';
+}
+function updateCutUI(){
+  var cut = getCut(), el = $('cutinfo'), btn = $('showall');
+  if(cut){
+    el.textContent = 'เริ่มคาบใหม่เมื่อ ' + cutLabel(cut) + ' · ซ่อนผลก่อนหน้านั้นอยู่';
+    el.classList.add('on'); btn.style.display = '';
+  } else {
+    el.textContent = ''; el.classList.remove('on'); btn.style.display = 'none';
+  }
+}
+
 function filtered(){
-  var c = $('cls').value, r = $('room').value.trim();
+  var c = $('cls').value, r = $('room').value.trim(), cut = getCut();
   return rows.filter(function(x){
-    return (!c || String(x.cls) === c) && (!r || String(x.room) === r || demoMode);
+    if(c && String(x.cls) !== c) return false;
+    if(r && String(x.room) !== r && !demoMode) return false;
+    if(cut && !demoMode && String(x.ts || '') < cut) return false;
+    return true;
   });
 }
 function render(){
@@ -335,7 +375,7 @@ function render(){
       '<td>' + (x.placed||0) + '/' + (x.n||0) + '<div class="prog"><i style="width:' + prog + '%"></i></div></td>' +
       '<td>' + (best ? best + ' <span style="color:var(--mut)">(' + bn + ' ครั้ง)</span>' : '—') + '</td>' +
     '</tr>';
-  }).join('') : '<tr><td colspan="6"><div class="empty">ยังไม่มีกลุ่มไหนส่งผล<br>ให้นักเรียนใส่เลขที่ในเกมแล้วเริ่มเล่นได้เลย</div></td></tr>';
+  }).join('') : '<tr><td colspan="6"><div class="empty">ยังไม่มีกลุ่มไหนส่งผล<br>ให้นักเรียนใส่รหัสในเกมแล้วเริ่มเล่นได้เลย</div></td></tr>';
 }
 function kpi(k, v, c){
   return '<div class="kpi"><div class="k">' + k + '</div><div class="v" style="color:' + c + '">' + v + '</div></div>';
@@ -345,7 +385,7 @@ function kpi(k, v, c){
 function csvAll(){
   var data = filtered();
   if(!data.length){ alert('ยังไม่มีข้อมูลให้ดาวน์โหลด'); return; }
-  var head = ['กลุ่ม','เลขที่1','เลขที่2','คาบ','คะแนน','เต็ม','ร้อยละ','ระดับ','ทำได้','ทั้งหมด',
+  var head = ['รหัสกลุ่ม','รหัส1','รหัส2','คาบ','คะแนน','เต็ม','ร้อยละ','ระดับ','ทำได้','ทั้งหมด',
               'เหตุผลถูกครั้งแรก','วางถูกครั้งแรก','คิดเลขสำเร็จ','ผิดเหตุผล','ผิดช่อง','ผิดคำนวณ',
               'ใช้คำใบ้','ต่อเนื่องสูงสุด','ข้อที่ผิด','เวลาอัปเดต'];
   var lines = [head.join(',')];
@@ -369,13 +409,30 @@ function csvAll(){
 /* ---------- เริ่มทำงาน ---------- */
 $('room').value = FB.room;
 $('setup').style.display = fbOn() ? 'none' : 'block';
+updateCutUI();
 $('reload').addEventListener('click', load);
 $('csv').addEventListener('click', csvAll);
 $('cls').addEventListener('change', function(){
   render();
   if(fbOn() && !demoMode){ load(); autoRefresh(); }
 });
-$('room').addEventListener('input', render);
+var roomTimer = null;
+$('room').addEventListener('input', function(){
+  render();
+  if(roomTimer) clearTimeout(roomTimer);
+  /* รหัสห้องอยู่ในเส้นทางของข้อมูลแล้ว เปลี่ยนรหัสห้องจึงต้องดึงข้อมูลใหม่ */
+  roomTimer = setTimeout(function(){ if(fbOn() && !demoMode) load(); }, 900);
+});
+$('reset').addEventListener('click', function(){
+  if(!confirm('เริ่มคาบใหม่\n\nผลของกลุ่มที่ส่งมาก่อนตอนนี้จะถูกซ่อนออกจากจอ\nข้อมูลเก่าไม่ได้ถูกลบ กดปุ่ม "แสดงผลเก่าทั้งหมด" เรียกกลับมาดูได้ตลอด\n\nยืนยันเริ่มคาบใหม่หรือไม่?')) return;
+  setCut(new Date().toISOString());
+  updateCutUI(); render();
+  $('status').textContent = 'เริ่มคาบใหม่แล้ว · รอกลุ่มแรกส่งผลเข้ามา';
+});
+$('showall').addEventListener('click', function(){
+  setCut(''); updateCutUI(); render();
+  $('status').textContent = 'กลับมาแสดงผลทั้งหมดแล้ว';
+});
 $('demo').addEventListener('click', function(){
   demoMode = true; rows = makeDemo();
   $('status').textContent = 'กำลังแสดงข้อมูลตัวอย่าง (ไม่ใช่ข้อมูลจริง)';

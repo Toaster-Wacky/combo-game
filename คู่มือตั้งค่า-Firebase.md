@@ -55,10 +55,13 @@ service cloud.firestore {
              && d.conf is list && d.conf.size() <= 30;
     }
 
-    match /results/{docId} {
-      allow read: if true;                                  // จอครูอ่านได้
-      allow create, update: if okResult(request.resource.data);  // เกมเขียนได้ ถ้าข้อมูลถูกรูปแบบ
-      allow delete: if false;                               // ห้ามลบ กันข้อมูลหาย
+    // ข้อมูลอยู่ใต้ rooms/<รหัสห้อง>/results/<เอกสาร>
+    // ต้องรู้รหัสห้องจึงจะอ่านได้ ถึงมี apiKey แต่ไม่รู้รหัสห้องก็ดึงข้อมูลไม่ได้
+    match /rooms/{roomId}/results/{docId} {
+      allow read: if true;
+      allow create, update: if okResult(request.resource.data)
+                            && request.resource.data.room == roomId;
+      allow delete: if false;
     }
   }
 }
